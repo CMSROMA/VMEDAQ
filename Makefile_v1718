@@ -1,0 +1,39 @@
+#------------------------------------------------------------------------------ 
+# Title:        Makefile for the CT acquisition
+# Date:         2009                                                    
+# Author:	A.Sarti
+# Platform:	Linux 2.4.x
+# Language:	GCC 2.95 and 3.0
+#------------------------------------------------------------------------------ 
+
+
+OBJS = main_v1718.o v1718_lib.o  vme_bridge.o printbit.o
+HEAD = main_v1718.h v1718_lib.h adc265_lib.h vme_bridge.h printbit.h
+
+INCLUDE_DIR = .
+
+COPTS  = -g -Wall -DLINUX -fPIC -I$(INCLUDE_DIR)
+
+
+acq_v1718: $(OBJS)
+	g++ -g -DLINUX -o acq_v1718 $(OBJS) -lncurses -lm -l CAENVME 
+
+main_v1718.o: main_v1718.c main_v1718.h  v1718_lib.h vme_bridge.h
+	g++ $(COPTS) -c main_v1718.c
+
+v1718_lib.o: v1718_lib.c v1718_lib.h 
+	g++ $(COPTS) -c v1718_lib.c
+
+vme_bridge.o: vme_bridge.c $(INCLUDE_DIR)/vme_bridge.h 	
+	g++ $(COPTS) -c vme_bridge.c	
+
+printbit.o: printbit.c  	
+	g++ $(COPTS) -c printbit.c	
+
+clean:
+	-rm -f acq_v1718
+	-rm -f #*#
+	-rm -f *~
+	-rm -f core
+	-rm -f $(OBJS)
+

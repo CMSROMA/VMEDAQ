@@ -1,0 +1,7 @@
+#define VME_INT_MAJOR 222
+
+#define VINT_IOCTL_ENA  0xF010
+#define VINT_IOCTL_DIS  0xF011
+//#define VINT_IOCTL_REQ  0xF012
+//#define VINT_IOCTL_FRE  0xF013
+#define VINT_IOCTL_CHK  0xF014
