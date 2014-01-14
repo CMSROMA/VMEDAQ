@@ -11,7 +11,8 @@ using namespace std;
 int init_1718(int32_t BHandle) {
 
   int status,caenst;
-  unsigned short Mask=0, DataShort=0;
+  unsigned short Mask=0;
+  unsigned int DataShort=0;
 
   /*----------   setting the IO reg section of the V1718  -----------*/
   
@@ -61,7 +62,7 @@ int init_1718(int32_t BHandle) {
   /*---------------   end setting IO reg section of V1718 ----------------*/
 
 int init_scaler_1718(int32_t BHandle) {
-  unsigned short DataShort=0; 
+  unsigned int DataShort=0; 
   int status, caenst;
   unsigned short limit=1023, AutoReset=1;
   printf("Init SCALER v1718\n");
@@ -106,7 +107,7 @@ int init_pulser_1718(int32_t BHandle) {
 
 int read_scaler_1718(int32_t BHandle) {
   
-  unsigned short DataShort=0;
+  unsigned int DataShort=0;
   int status, caenst;
   caenst = CAENVME_ReadRegister(BHandle, cvScaler1, &DataShort);
   //  printf("Scaler value = %d \n",DataShort);
@@ -119,7 +120,7 @@ int read_scaler_1718(int32_t BHandle) {
 
 int trigger_scaler_1718(int32_t BHandle, bool *ptrig) {
   
-  unsigned short DataShort=0;
+  unsigned int DataShort=0;
   int status, caenst;
   bool trigger = false;
   caenst = CAENVME_ReadRegister(BHandle, cvScaler1, &DataShort);
@@ -168,7 +169,7 @@ int read_trig_1718(int32_t BHandle, bool *ptrig) {
 
   int status = 1;
   int caenst;
-  unsigned short DataShort=0;
+  unsigned int DataShort=0;
   int ch0 =0, ch1=0;
 
   unsigned short Mask=0;

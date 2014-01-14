@@ -31,7 +31,7 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-  unsigned long  max_evts=100000;
+  unsigned long  max_evts=10000;
   int nevent = 0;
   short trigger_OK, daq_status, status_init;
   int i; 
