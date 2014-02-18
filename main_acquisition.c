@@ -31,7 +31,7 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-  unsigned long  max_evts=10000;
+  unsigned long  max_evts=9000;
   int nevent = 0;
   short trigger_OK, daq_status, status_init;
   int i; 
@@ -232,7 +232,7 @@ int main(int argc, char** argv)
   time_start = tempo_start;
   time_last = tempo_start;
   
-  int in_evt_read = 10; bool read_boards;
+  int in_evt_read = 1; bool read_boards;
   int hm_evt_read; bool hiScale = true;
 
   //Clear of header info
@@ -362,8 +362,8 @@ int main(int argc, char** argv)
 	if(ADC792) {
 	  my_adc792_OD.clear();
 	  my_adc792_WD.clear();
-	  //	my_adc792_OD = read_adc792(daq_status); 
-	  my_adc792_OD = readFastNadc792(BHandle,0,daq_status,hm_evt_read,my_adc792_WD); 
+	  my_adc792_OD = read_adc792(BHandle,daq_status); 
+	  //my_adc792_OD = readFastNadc792(BHandle,0,daq_status,hm_evt_read,my_adc792_WD); 
 	  //	  if(!my_adc792_OD.size())  cout<<" Warning:: QDC0 Read :: "<< my_adc792_OD.size()<<" "<< my_adc792_WD.size()<<endl;
 	  if (daq_status != 1) 
 	    {
@@ -372,6 +372,7 @@ int main(int argc, char** argv)
 	    }
 	  board_num += 16;
 	  adc792Words = my_adc792_OD.size();
+	  std::cout << "ADC 792 WORDS " << adc792Words << std::endl;
 	}
 
 	/* read the ADC 792 n.2*/
@@ -446,7 +447,7 @@ int main(int argc, char** argv)
 
 	  //Write the event in unformatted style
 	  myOE.push_back(nevent);
-
+	  
 	  //What boards?
 	  myOE.push_back(board_num);
 	  
@@ -735,10 +736,10 @@ unsigned short writeFastEvent(vector<int> wriD, ofstream *Fouf)
   unsigned short status = 1;
   int size = wriD.size();
   int myD[size];
-  //  cout<<" New Event "<<endl;
+  //  cout<<"++++++++ New Event of size " << size <<endl;
   for(int dum=0; dum<size; dum++) {
     myD[dum] = wriD[dum];
-    //    cout<<myD[dum]<<" "<<dum<<endl;
+    // cout<<dum << "\t" << myD[dum] <<endl;
   }
   Fouf->write((char *) &size,sizeof(int));
   Fouf->write((char *) myD,wriD.size()*sizeof(int));

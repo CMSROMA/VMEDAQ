@@ -1,12 +1,14 @@
-#include <vector>
 #ifndef _V792N_HEADER_
 #define _V792N_HEADER_
 
+#include <vector>
+#include "modules_config.h"
+
 #define NUMADBOARDS	        1
-#define V792N_ADDRESS               0x00050000
+#define V792N_ADDRESS               V792_0_BA
 #define V792N_ADDRESS2              0x00040000
 #define V792N_ADDRESS3              0x00090000
-#define V792N_CHANNEL               16
+#define V792N_CHANNEL               32
 
 #define V792N_REG1_STATUS           0x100e
 #define V792N_REG2_STATUS           0x1022
@@ -33,7 +35,7 @@
 #define V792N_R_TEST_ADDRESS        0x1064
 #define V792N_SS_RESET_REG          0x1016
 
-#define adc792_debug    0
+#define adc792_debug    1
 
 unsigned short init_adc792(int32_t BHandle);
 std::vector<int> read_adc792(int32_t BHandle, int status);

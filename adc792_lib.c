@@ -84,6 +84,7 @@ unsigned short init_adc792(int32_t BHandle) {
     if(nZS) {
       address = adcaddrs.at(iBo) + 0x1032;
       DataLong = 0x18; //Disable Zero Suppression + disable overfl
+      //DataLong = 0x4998; //Disable Zero Suppression + disable overfl
       caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
       status *= (1-caenst); 
       if(status != 1) {
@@ -92,18 +93,20 @@ unsigned short init_adc792(int32_t BHandle) {
     } else {
       address = adcaddrs.at(iBo) + 0x1032;
       DataLong = 0x88; //Enable Zero Suppression + disable overfl
+      //DataLong = 0x4988; //Enable Zero Suppression + disable overfl
       caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
       status *= (1-caenst); 
       if(status != 1) {
-	printf("Could not disable ZS: %li\n", DataLong);
+	printf("Could not enable ZS: %li\n", DataLong);
       }
     }
     
     //Set the thresholds.
-    for(int i=0; i<16; i++) {
-      address = adcaddrs.at(iBo) + 0x1080 +4*i;
-      if(adc792_debug) printf("Add : %lx\n",address);
-      DataLong = 0x12; //Threshold
+    for(int i=0; i< V792N_CHANNEL; i++) {
+      //      address = adcaddrs.at(iBo) + 0x1080 +4*i; //every 4 for V792N
+      address = adcaddrs.at(iBo) + 0x1080 +2*i; //every 2 for V792
+      if(adc792_debug) printf("Channel %d Address : %lx\n",i,address);
+      DataLong = 0x0; //Threshold
       caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
       status *= (1-caenst); 
       if(adc792_debug) printf("Iped register read: %li\n", DataLong);
@@ -118,7 +121,8 @@ unsigned short init_adc792(int32_t BHandle) {
     caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
     status *= (1-caenst); 
     //    if(adc792_debug) printf("Iped register read: %li\n", DataLong);
-    DataLong = 0xFF; //iped value
+    // DataLong = 0xFF; //iped value
+    DataLong = 0x60; //iped value
     caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
     status *= (1-caenst); 
     printf("Iped register read: %li\n", DataLong);
@@ -146,22 +150,33 @@ vector<int> read_adc792(int32_t BHandle, int status)
   vector<int> outD;
   int caenst;
   unsigned long address, data, dt_type;
-  unsigned long adc792_rdy, adc792_busy, evtnum;
+  unsigned long evtnum;
   unsigned long full,empty, evc_lsb, evc_msb, adc_value, adc_chan;
   unsigned int ncha;
+  bool adc_underthreshold,adc_overflow, adc792_rdy, adc792_busy;
   status = 1; 
 
-  /*
-    check if the fifo has something inside: use status register 1
-   */  
+  adc792_rdy = 0;
+  adc792_busy = 0;
+
+  /* /\* while (!adc792_rdy || adc792_busy) *\/ */
+  /* /\*   { *\/ */
+  /*     /\* */
+
+  //check if the fifo has something inside: use status register 1 
+
   address = V792N_ADDRESS + adc792_shift.statusreg1;
   //status *= vme_read_dt(address,&data,AD32,D16);
   caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD16);
-  status = (1-caenst); 
-
-  if(adc792_debug) printf("ST (str1) :: %i, %lx, %lx \n",status,address,data);
+  status = (1-caenst);
+  
   adc792_rdy = data & adc792_bitmask.rdy;
-  adc792_busy = data & adc792_bitmask.busy;
+  adc792_busy = (data>>2) & adc792_bitmask.rdy;
+  
+  std::cout << adc792_rdy << "," << adc792_busy << std::endl; 
+  /*     //      usleep(1); */
+  //if(adc792_debug) printf("ST (str1) :: %i, %lx, %lx \n",status,address,data&FF); */
+  /*   } */
 
   //Trigger status
   address = V792N_ADDRESS + 0x1020;
@@ -192,36 +207,50 @@ vector<int> read_adc792(int32_t BHandle, int status)
     address = V792N_ADDRESS;
     //status = vme_read_dt(address,&data,AD32,D32);
     caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD32);
-    status *= (1-caenst); 
-    if(adc792_debug) printf("Data Header :: %i, %lx, %lx \n",status,address,data);
+    status *= (1-caenst);
+
+    if ( ! (data>>24) & 0x2 )
+      {
+	std::cout << "ADC792 ERROR: NOT BEGIN OF EVENT" << std::endl;
+	return outD;
+      }
+
+    //    if(adc792_debug) printf("Data Header :: %i, %lx, %lx \n",status,address,data);
     ncha =  data>>8 & 0x3F;
-    if(adc792_debug) cout<<"Going to Read "<<ncha<<" channels!"<<endl;
+    if(adc792_debug) cout<<"BOE:Read "<<ncha<<" channels!"<<endl;
     full = 0; empty = 0;
     while(!full && !empty) {
-
       //Read MEB for each channel and get the ADC value
       address = V792N_ADDRESS;
       //status = vme_read_dt(address,&data,AD32,D32);
       caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD32);
       status *= (1-caenst); 
-      if(adc792_debug) printf("Reading and got:: %i %lx %lx\n", status, data, address);
-
+      //      if(adc792_debug) printf("Reading and got:: %i %lx %lx\n", status, data, address);
       dt_type = data>>24 & 0x7;
-      if(adc792_debug) printf("typ:: %lx\n", dt_type);
+      //if(adc792_debug) printf("typ:: %lx\n", dt_type);
 
       if(!(dt_type & 0x7)) {
-	adc_value = data & 0xFFF;
-	adc_chan = data>>17 & 0xF;
-	if(adc792_debug) cout<<adc_value<<" "<<adc_chan<<" "<<endl;
+	// adc_chan = data>>17 & 0xF; //For 792N [bit 17-20]
+	adc_chan = data>>16 & 0x1F; //For 792 [bit 16-20]
+
+	adc_value = data & 0xFFF; // adc data [bit 0-11]
+	adc_overflow = (data>>12) & 0x1; // overflow bit [bit 12]
+	adc_underthreshold = (data>>13) & 0x1; // under threshold bit [bit 13]
+
+	if(adc792_debug) cout<< "ADC data :\tch " << adc_chan<<"\tadc "<< adc_value<<"\tut "<< adc_underthreshold << "\tof " << adc_overflow << endl;
 	adc_val[adc_chan] = adc_value;
-	if(data>>12 & 0x1) cout<<" Overflow, my dear !! "<<adc_value<<endl;
       } else if(dt_type & 0x4) {
 	//EOB
 	evtnum = data & 0xFFFFFF;
-	if(adc792_debug) cout<<"EvtNum "<<evtnum<<endl;
+	if(adc792_debug) cout<<"EOE: EvtNum "<<evtnum<<endl;
       } else if(dt_type & 0x2) {
-	//Header
-	if(adc792_debug) cout<<" ERROR:: THIS SHOULD NOT HAPPEN!!!"<<endl;
+	//Header 1?
+	if(adc792_debug) cout<<"ADC792 ERROR:: THIS SHOULD NOT HAPPEN!!!"<<endl;
+	return outD;
+      } else if(dt_type == 0) {
+	//Header 0?
+	if(adc792_debug) cout<<"ADC792 ERROR:: EVENT EMPTY!!"<<endl;
+	return outD;
       }
 
       //Check the status register to check the MEB status
