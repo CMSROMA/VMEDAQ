@@ -95,6 +95,7 @@ int main(int argc, char** argv)
       status_init *= init_scaler_1718(BHandle) ;
       status_init *= init_pulser_1718(BHandle) ;
       status_init *= clearbusy_1718(BHandle);
+      status_init *= print_configuration_1718(BHandle);
       if (status_init != 1) { return(1); }
       
     } 
@@ -238,6 +239,9 @@ int main(int argc, char** argv)
   //Clear of header info
   my_header_OD.clear();
 
+  //Reset the scaler counter!
+
+  if(V1718 && ! IO513) daq_status = read_scaler_1718(BHandle);
   /* Start of the event collection cycle */
   while(nevent<(int)max_evts)
     {
@@ -249,12 +253,10 @@ int main(int argc, char** argv)
       hiScale = true;
       trigger = false;
       if(nevent<10) {hm_evt_read = 1; hiScale = false;}
-
       /* Wait for the trigger signal from the IO */
       if (V1718 && !IO513) {
 	while(!trigger)
 	  {
-	    
 	    //	    daq_status = read_trig_1718(BHandle,&trigger); 
 	    daq_status = trigger_scaler_1718(BHandle,&trigger);    
 	  }
@@ -293,7 +295,7 @@ int main(int argc, char** argv)
 	if((nevent != hm_evt_read) || !hiScale)
 	  read_boards = true;
       }
-
+      read_boards = false;
       if(read_boards) {
 	/* read the TDC 1190 */
 	if(TDC1190) {
@@ -362,7 +364,8 @@ int main(int argc, char** argv)
 	if(ADC792) {
 	  my_adc792_OD.clear();
 	  my_adc792_WD.clear();
-	  my_adc792_OD = read_adc792(BHandle,daq_status); 
+	  //my_adc792_OD = read_adc792(BHandle,daq_status); 
+	  my_adc792_OD = readFastadc792(BHandle,0,daq_status); 
 	  //my_adc792_OD = readFastNadc792(BHandle,0,daq_status,hm_evt_read,my_adc792_WD); 
 	  //	  if(!my_adc792_OD.size())  cout<<" Warning:: QDC0 Read :: "<< my_adc792_OD.size()<<" "<< my_adc792_WD.size()<<endl;
 	  if (daq_status != 1) 
@@ -657,7 +660,7 @@ int main(int argc, char** argv)
       }
 
       if(V1718 && ! IO513) daq_status = read_scaler_1718(BHandle);
-      
+
       //      if(IO513) daq_status = read_V513_old(BHandle, IO_value);
 
       if((nevent-(p_value*((int)(nevent/p_value))))==0) 
@@ -683,10 +686,11 @@ int main(int argc, char** argv)
       /* Reset the strobe bit and send the reset to the DAQ */
       if (V1718 && !IO513) {
 	daq_status *= clearbusy_1718(BHandle);
-	if (daq_status != 1) 
+
+	if (daq_status != 1)
 	  {
 	    printf("\nerror resetting V1718 -> exiting\n");
-	    return(1); 
+	    return(1);
 	  }
       } else if (V1718 && IO513) {
 	/*

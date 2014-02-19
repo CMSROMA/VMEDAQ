@@ -4,8 +4,10 @@
 
 #include "v1718_lib.h"
 #include <iostream>
+#include <map>
 
 using namespace std;
+
 
 /*----------------------------------------------------------------------*/
 int init_1718(int32_t BHandle) {
@@ -18,6 +20,8 @@ int init_1718(int32_t BHandle) {
   
   
   status = 1;
+  caenst = CAENVME_SystemReset(BHandle);
+  status *= (1-caenst);
   DataShort = 0x200; /* timeout=50us - FIFO mode */
   caenst = CAENVME_WriteRegister(BHandle,cvVMEControlReg,DataShort);
   status *= (1-caenst); 
@@ -75,6 +79,7 @@ int init_scaler_1718(int32_t BHandle) {
   printf("Scaler Reg config = %x \n",DataShort);
 
   caenst = CAENVME_EnableScalerGate(BHandle);
+
   status *= 1-caenst;
   return status;
 }
@@ -127,7 +132,10 @@ int trigger_scaler_1718(int32_t BHandle, bool *ptrig) {
   status = (1-caenst); 
   if(DataShort){ /*ma se ci metti maggiore o uguale a 1 invece che ==?Solo per evitare l'incastro inizale..funziona.. lasciamo cosi' .. 4aprile2011*/
     if(DataShort>1){
-      cout<<"Warning: scaler > 1"<<endl;
+      caenst = CAENVME_ResetScalerCount(BHandle);
+      cout<<"HEY: Warning: scaler > 1"<<endl;
+      *ptrig=true;
+      return 2;
     }
     trigger = true;
     caenst = CAENVME_ResetScalerCount(BHandle);
@@ -137,6 +145,39 @@ int trigger_scaler_1718(int32_t BHandle, bool *ptrig) {
   return status;
   
 }
+
+int print_configuration_1718(int32_t BHandle)
+{
+  unsigned int DataShort=0;
+  int status=1, caenst;
+
+  std::map<std::string,CVRegisters> mainRegisters;
+  mainRegisters["StatusReg"]=cvStatusReg;
+  mainRegisters["VMEControlReg"]=cvVMEControlReg;
+  mainRegisters["VMEIRQEnaReg"]=cvVMEIRQEnaReg;
+  mainRegisters["InputReg"]=cvInputReg;
+  mainRegisters["OutReg"]=cvOutRegSet;
+  mainRegisters["InMuxReg"]=cvInMuxRegSet;
+  mainRegisters["OutMuxReg"]=cvOutMuxRegSet;
+  mainRegisters["PulserATime"]=cvPulserA0;
+  mainRegisters["PulserAPulses"]=cvPulserA1;
+  mainRegisters["PulserBTime"]=cvPulserB0;
+  mainRegisters["Scaler0Conf"]=cvScaler0;
+  mainRegisters["Scaler1Conf"]=cvScaler1;
+  
+
+  std::cout << "+++++ V1718 CONFIGURATION +++++++++" << std::endl;
+  for (std::map<std::string,CVRegisters>::const_iterator myReg=mainRegisters.begin();myReg!=mainRegisters.end();++myReg)
+    {
+      caenst = CAENVME_ReadRegister(BHandle, myReg->second, &DataShort);
+      status *= (1-caenst); 
+      printf("%s = %X\n",myReg->first.c_str(),DataShort);
+    }
+  std::cout << "+++++ V1718 END CONFIGURATION +++++++++" << std::endl;
+
+  return status;
+}
+
 
  /*------------------------------------------------------------------------*/
 
@@ -148,7 +189,17 @@ int clearbusy_1718(int32_t BHandle) {
   unsigned short Mask=0;
   Mask = cvOut0Bit + cvOut1Bit;
   caenst = CAENVME_PulseOutputRegister(BHandle,Mask);
-  status *= (1-caenst); 
+  status *= (1-caenst);
+  /* if(ordine==DAQ_BUSY_ON) */
+  /*   { */
+  /*     caenst = CAENVME_SetOutputRegister(BHandle,Mask); */
+  /*     status *= (1-caenst);  */
+  /*   } */
+  /* else */
+  /*   { */
+  /*     caenst = CAENVME_ClearOutputRegister(BHandle,Mask); */
+  /*     status *= (1-caenst);  */
+  /*   } */
   return status;
 }
 
