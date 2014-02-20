@@ -11,6 +11,7 @@ int trigger_scaler_1718(int32_t BHandle, bool *ptrig);
 int print_configuration_1718(int32_t BHandle);
 int set_configuration_1718(int32_t BHandle);
 int read_scaler_1718(int32_t BHandle);
+int reset_nim_scaler_1718(int32_t BHandle);
 int setbusy_1718(int32_t BHandle,int command);
 int clearbusy_new_1718(int32_t BHandle);
 int read_trig_1718(int32_t BHandle, bool *trig);

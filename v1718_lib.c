@@ -109,7 +109,20 @@ int init_pulser_1718(int32_t BHandle) {
   return status;
 }
 
- /*------------------------------------------------------------------------*/
+int reset_nim_scaler_1718(int32_t BHandle) {
+  int status = 1; int caenst;
+
+  unsigned short Mask=0;
+  Mask = cvOut3Bit;
+  caenst = CAENVME_SetOutputRegister(BHandle,Mask);
+  status *= (1-caenst);
+  caenst = CAENVME_ClearOutputRegister(BHandle,Mask);
+  status *= (1-caenst);
+  return status;
+}
+
+
+/*------------------------------------------------------------------------*/
 
 int read_scaler_1718(int32_t BHandle) {
   
@@ -193,7 +206,7 @@ int set_configuration_1718(int32_t BHandle)
   /* registerValues["OutReg"]=cvOutRegSet; */
 
   registerValues[cvInMuxRegSet]=0x488; //SCALER HIT SOURCE=1,PULSER A START SOURCE=IN0,PULSER B START SOURCE=IN1,
-  registerValues[cvOutMuxRegSet]=0x3BB; //OUT0=OUTREGISTER, OUT1=PULSERA,OUT2,OUTREGISTER,OUT3=PULSERB,OUT4=OUTREGISTER
+  registerValues[cvOutMuxRegSet]=0x3FB; //OUT0=OUTREGISTER, OUT1=PULSERA,OUT2,OUTREGISTER,OUT3=OUTREGISTER,OUT4=OUTREGISTER
 
   /* registerValues["PulserATime"]=cvPulserA0; */
   /* registerValues["PulserAPulses"]=cvPulserA1; */
@@ -222,7 +235,6 @@ int set_configuration_1718(int32_t BHandle)
 int setbusy_1718(int32_t BHandle,int command) {
 
   int status = 1; int caenst;
-
   unsigned short Mask=0;
   /* Mask = cvOut3Bit+cvOut4Bit; */
   /* caenst = CAENVME_PulseOutputRegister(BHandle,Mask); */
@@ -230,7 +242,7 @@ int setbusy_1718(int32_t BHandle,int command) {
   Mask = cvOut0Bit+cvOut2Bit;
   if(command==DAQ_BUSY_ON)
     {
-      caenst = CAENVME_SetOutputRegister(BHandle,Mask);
+      caenst = CAENVME_SetOutputRegister(BHandle,Mask+cvOut4Bit);
       status *= (1-caenst);
     }
   else

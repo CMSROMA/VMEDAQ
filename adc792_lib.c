@@ -291,7 +291,7 @@ vector<int> readFastadc792(int32_t BHandle, int idB, short int& status)
   status = 1; 
   int caenst;
   unsigned long data,address;
-  unsigned long dataV[34]; int wr;
+  unsigned int dataV[33]; int wr;
   unsigned long adc792_rdy, adc792_busy;
   unsigned int ncha, idV;
   struct timeval tv;
@@ -353,13 +353,14 @@ vector<int> readFastadc792(int32_t BHandle, int idB, short int& status)
     if(adc792_debug) cout<<"Going to Read "<<ncha<<" channels!"<<endl;
 
     //Vector reset
-    idV = 0; while(idV<34) { dataV[idV] = 0; idV++; }
-    wr = (ncha+1)*4;
+    idV = 0; while(idV<ncha+1) { dataV[idV] = 0; idV++; }
+    wr = sizeof(dataV);
     //    printf("numchann %d \n",ncha);
 
     //status *= vme_read_blk(address,dataV,wr,AD32,D32);    
     caenst = CAENVME_BLTReadCycle(BHandle,address,dataV,wr,
 				  cvA24_U_DATA,cvD32,&nbytes_tran);
+    std::cout << "nBytes transferred " << nbytes_tran << " " << sizeof(dataV) << std::endl;
     status *= (1-caenst); 
     if(status != 1) {
       printf("Could not read BLT\n");
@@ -367,37 +368,52 @@ vector<int> readFastadc792(int32_t BHandle, int idB, short int& status)
     }
     //Vector dump into output
     idV = 0; while(idV<ncha+1) { 
-      outD.push_back((int)dataV[idV]); 
+      outD.push_back((int)dataV[idV]);
+      if (adc792_debug)
+	{
+	  short dt_type = dataV[idV]>>24 & 0x7;
+	  if (dt_type==0)
+	    {
+	      // adc_chan = data>>17 & 0xF; //For 792N [bit 17-20]
+	      short adc_chan = dataV[idV]>>16 & 0x1F; //For 792 [bit 16-20]
+	      
+	      unsigned int adc_value = dataV[idV] & 0xFFF; // adc data [bit 0-11]
+	      bool adc_overflow = (dataV[idV]>>12) & 0x1; // overflow bit [bit 12]
+	      bool adc_underthreshold = (dataV[idV]>>13) & 0x1; // under threshold bit [bit 13]
+	      std::cout << "Line " << idV << "\traw " << dataV[idV] << "\tchannel " << adc_chan << "\tvalue " << adc_value << "\toverflow " << adc_overflow << "\tunderthreshold " << adc_underthreshold << std::endl;
+	    }
+	}
       //      cout<<" "<<(int)dataV[idV]<<" "<<idV<<endl; 
       idV++;  }
   }
 
-  //Check the status register to check the MEB status
-  //status = vme_read_dt(address,&data,AD32,D16);
+  /* //Check the status register to check the MEB status */
+  /* //status = vme_read_dt(address,&data,AD32,D16); */
   caenst = CAENVME_ReadCycle(BHandle,address+adc792_shift.statusreg2,&data,cvA24_U_DATA,cvD16);
-  status *= (1-caenst); 
+  status *= (1-caenst);
   if(status != 1) {
     printf("Could not read statusreg2\n");
   }
   
-  bool full = data &  adc792_bitmask.full;
-  bool empty = data &  adc792_bitmask.empty;
-  if(full || !empty) {
-    cout<<"MEB Full or !Empty:: "<<full<<" !!! Resetting memory"<<endl;
-    unsigned long DataLong = 0x80; //Memory reset
-    caenst = CAENVME_WriteCycle(BHandle,address+0x1006,&DataLong,cvA24_U_DATA,cvD16);
-    status *= (1-caenst); 
-    /* caenst = CAENVME_ReadCycle(BHandle,address+0x1006,&DataLong,cvA24_U_DATA,cvD16); */
-    /* status *= (1-caenst);  */
-    /* caenst = CAENVME_WriteCycle(BHandle,address+0x1008,&DataLong,cvA24_U_DATA,cvD16); */
-    /* status *= (1-caenst);  */
-    /* caenst = CAENVME_ReadCycle(BHandle,address+0x1008,&DataLong,cvA24_U_DATA,cvD16); */
-    /* status *= (1-caenst);  */
-    if(status != 1) {
-      printf("Could not reset");
-    }
+  bool full = data &  adc792_bitmask.full; 
+  bool empty = data &  adc792_bitmask.empty;	
 
-  }
+   if(full || !empty) { 
+     std::cout << "FULL " << full << " EMPTY " << empty << std::endl;
+     /* caenst = CAENVME_WriteCycle(BHandle,address+0x1006,&DataLong,cvA24_U_DATA,cvD16); */
+     /* status *= (1-caenst);  */
+     /* /\*   /\\* caenst = CAENVME_ReadCycle(BHandle,address+0x1006,&DataLong,cvA24_U_DATA,cvD16); *\\/ *\/ */
+     /* /\*   /\\* status *= (1-caenst);  *\\/ *\/ */
+     /* caenst = CAENVME_WriteCycle(BHandle,address+0x1008,&DataLong,cvA24_U_DATA,cvD16); */
+     /* status *= (1-caenst); */
+     /* /\*   /\\* caenst = CAENVME_ReadCycle(BHandle,address+0x1008,&DataLong,cvA24_U_DATA,cvD16); *\\/ *\/ */
+     /* /\*   /\\* status *= (1-caenst);  *\\/ *\/ */
+     /*  if(status != 1) { */
+     /* 	printf("Could not reset"); */
+     /*  } */
+   }
+
+  /* } */
   
   if(adc792_debug) {
     gettimeofday(&tv, NULL); 

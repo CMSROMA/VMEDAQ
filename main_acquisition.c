@@ -96,6 +96,7 @@ int main(int argc, char** argv)
       status_init *= set_configuration_1718(BHandle);
       status_init *= print_configuration_1718(BHandle);
       status_init *= init_scaler_1718(BHandle) ;
+      status_init *= reset_nim_scaler_1718(BHandle) ;
       status_init *= setbusy_1718(BHandle,DAQ_BUSY_ON);
       if (status_init != 1) { return(1); }
       
@@ -234,7 +235,8 @@ int main(int argc, char** argv)
       /*  START of data acquisition */ 
       if (V1718 && !IO513) {
 	daq_status *= setbusy_1718(BHandle,DAQ_BUSY_OFF);
-	daq_status = read_scaler_1718(BHandle);
+	daq_status *= read_scaler_1718(BHandle);
+
 	if (daq_status != 1) 
 	  { 
 	    printf("\n Trigger enable(v1718)  problems.. STOP!\n");
@@ -300,7 +302,7 @@ int main(int argc, char** argv)
 	if((nevent != hm_evt_read) || !hiScale)
 	  read_boards = true;
       }
-      read_boards = false;
+
       if(read_boards) {
 	/* read the TDC 1190 */
 	if(TDC1190) {
@@ -713,7 +715,6 @@ int main(int argc, char** argv)
       elapsed_seconds_dt = tempo_aftwr - tempo_now;
 
     }
-
   /* Output File finalization */  
   printf("\n Closing output file!\n");
   myOut.close();
