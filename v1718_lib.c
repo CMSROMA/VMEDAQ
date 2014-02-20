@@ -27,7 +27,7 @@ int init_1718(int32_t BHandle) {
   status *= (1-caenst); 
   caenst = CAENVME_ReadRegister(BHandle,cvVMEControlReg,&DataShort);
   status *= (1-caenst); 
-  printf("Coltrol Reg config = %x \n",DataShort);
+  printf("Control Reg config = %x \n",DataShort);
 
   /*  setting the output lines */
 
@@ -51,15 +51,16 @@ int init_1718(int32_t BHandle) {
 
   //  Mask = cvOut0Bit + cvOut1Bit + cvOut2Bit + cvOut3Bit + cvOut4Bit;
   Mask = cvOut0Bit + cvOut1Bit;
-  caenst = CAENVME_SetOutputRegister(BHandle,Mask); 
-  status *= (1-caenst); 
-
-  /*  setting the input lines */
+  caenst = CAENVME_SetOutputRegister(BHandle,Mask);
+  status *= (1-caenst);
+  
+  //setting the input lines
   caenst = CAENVME_SetInputConf(BHandle,cvInput0,cvDirect,cvActiveHigh);
-  status *= (1-caenst); 
+  status *= (1-caenst);
   caenst = CAENVME_SetInputConf(BHandle,cvInput1,cvDirect,cvActiveHigh);
-  status *= (1-caenst); 
+  status *= (1-caenst);
 
+  /* status *= set_configuration_1718(BHandle); */
   return status;
 
 }
@@ -78,7 +79,7 @@ int init_scaler_1718(int32_t BHandle) {
   status *= 1-caenst;
   printf("Scaler Reg config = %x \n",DataShort);
 
-  caenst = CAENVME_EnableScalerGate(BHandle);
+  caenst = CAENVME_EnableScalerGate(BHandle); 
 
   status *= 1-caenst;
   return status;
@@ -115,7 +116,7 @@ int read_scaler_1718(int32_t BHandle) {
   unsigned int DataShort=0;
   int status, caenst;
   caenst = CAENVME_ReadRegister(BHandle, cvScaler1, &DataShort);
-  //  printf("Scaler value = %d \n",DataShort);
+  //printf("Scaler value = %d \n",DataShort);
   status = (1-caenst); 
   caenst = CAENVME_ResetScalerCount(BHandle);
   status *= (1-caenst); 
@@ -132,10 +133,9 @@ int trigger_scaler_1718(int32_t BHandle, bool *ptrig) {
   status = (1-caenst); 
   if(DataShort){ /*ma se ci metti maggiore o uguale a 1 invece che ==?Solo per evitare l'incastro inizale..funziona.. lasciamo cosi' .. 4aprile2011*/
     if(DataShort>1){
-      caenst = CAENVME_ResetScalerCount(BHandle);
       cout<<"HEY: Warning: scaler > 1"<<endl;
       *ptrig=true;
-      return 2;
+      return 999;
     }
     trigger = true;
     caenst = CAENVME_ResetScalerCount(BHandle);
@@ -179,27 +179,67 @@ int print_configuration_1718(int32_t BHandle)
 }
 
 
+int set_configuration_1718(int32_t BHandle)
+{
+  unsigned int DataShort=0;
+  int status=1, caenst;
+
+  std::map<CVRegisters,unsigned int> registerValues;
+
+  /* mainRegisters["StatusReg"]=cvStatusReg; */
+  /* mainRegisters["VMEControlReg"]=cvVMEControlReg; */
+  /* mainRegisters["VMEIRQEnaReg"]=cvVMEIRQEnaReg; */
+  /* registerValues["InputReg"]=cvInputReg; */
+  /* registerValues["OutReg"]=cvOutRegSet; */
+
+  registerValues[cvInMuxRegSet]=0x488; //SCALER HIT SOURCE=1,PULSER A START SOURCE=IN0,PULSER B START SOURCE=IN1,
+  registerValues[cvOutMuxRegSet]=0x3BB; //OUT0=OUTREGISTER, OUT1=PULSERA,OUT2,OUTREGISTER,OUT3=PULSERB,OUT4=OUTREGISTER
+
+  /* registerValues["PulserATime"]=cvPulserA0; */
+  /* registerValues["PulserAPulses"]=cvPulserA1; */
+  /* registerValues["PulserBTime"]=cvPulserB0; */
+  registerValues[cvScaler0]=0xFFF    ; //AUTORESET=1,ENDLIMIT=1023
+
+  /* registerValues["Scaler1Conf"]=cvScaler1; */
+  
+
+  std::cout << "+++++ V1718 SET CONFIGURATION +++++++++" << std::endl;
+  for (std::map<CVRegisters,unsigned int>::const_iterator myReg=registerValues.begin();myReg!=registerValues.end();++myReg)
+    {
+      caenst = CAENVME_WriteRegister(BHandle, myReg->first, myReg->second);
+      status *= (1-caenst); 
+      /* printf("%s = %X\n",myReg->first.c_str(),DataShort); */
+    }
+  std::cout << "+++++ V1718 END SET CONFIGURATION +++++++++" << std::endl;
+
+  return status;
+}
+
+
  /*------------------------------------------------------------------------*/
 
 
-int clearbusy_1718(int32_t BHandle) {
+int setbusy_1718(int32_t BHandle,int command) {
 
   int status = 1; int caenst;
 
   unsigned short Mask=0;
-  Mask = cvOut0Bit + cvOut1Bit;
-  caenst = CAENVME_PulseOutputRegister(BHandle,Mask);
-  status *= (1-caenst);
-  /* if(ordine==DAQ_BUSY_ON) */
-  /*   { */
-  /*     caenst = CAENVME_SetOutputRegister(BHandle,Mask); */
-  /*     status *= (1-caenst);  */
-  /*   } */
-  /* else */
-  /*   { */
-  /*     caenst = CAENVME_ClearOutputRegister(BHandle,Mask); */
-  /*     status *= (1-caenst);  */
-  /*   } */
+  /* Mask = cvOut3Bit+cvOut4Bit; */
+  /* caenst = CAENVME_PulseOutputRegister(BHandle,Mask); */
+  /* status *= (1-caenst); */
+  Mask = cvOut0Bit+cvOut2Bit;
+  if(command==DAQ_BUSY_ON)
+    {
+      caenst = CAENVME_SetOutputRegister(BHandle,Mask);
+      status *= (1-caenst);
+    }
+  else
+    {
+      caenst = CAENVME_ClearOutputRegister(BHandle,Mask);
+      status *= (1-caenst);
+    }
+  caenst = CAENVME_EnableScalerGate(BHandle);  //Maybe use a better function to avoid disabling the scaler gate....
+  status *= 1-caenst;
   return status;
 }
 
@@ -230,7 +270,6 @@ int read_trig_1718(int32_t BHandle, bool *ptrig) {
 
   int ncy=0,ncycles=1000000000;
   while(!trig && ncy<ncycles){ 
-    
     caenst = CAENVME_ReadRegister(BHandle,cvInputReg, &DataShort);
     status *= (1-caenst); 
     //    int_to_binary(DataShort&0xff);
@@ -238,7 +277,8 @@ int read_trig_1718(int32_t BHandle, bool *ptrig) {
     ch1= (int) (DataShort & cvIn1Bit)>1;
     //    printf("Input reg :  %i  \n",(DataShort&0xff));
     if(ch0 || ch1) trig = true;
-      ncy++;     
+    ncy++;     
+    /* usleep(1); */
   }
   if(ncy == ncycles) {printf("TIMEOUT of V1718!!!!\n");}
   /*

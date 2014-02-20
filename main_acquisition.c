@@ -92,10 +92,11 @@ int main(int argc, char** argv)
     {
       printf("\n Bridge initialization and trigger vetoed\n");
       status_init *= init_1718(BHandle);
-      status_init *= init_scaler_1718(BHandle) ;
       status_init *= init_pulser_1718(BHandle) ;
-      status_init *= clearbusy_1718(BHandle);
+      status_init *= set_configuration_1718(BHandle);
       status_init *= print_configuration_1718(BHandle);
+      status_init *= init_scaler_1718(BHandle) ;
+      status_init *= setbusy_1718(BHandle,DAQ_BUSY_ON);
       if (status_init != 1) { return(1); }
       
     } 
@@ -174,27 +175,6 @@ int main(int argc, char** argv)
 
   printf("\n VME and modules initialization completed \n\n Start data acquisition\n");
   
-  /*  START of data acquisition */ 
-  if (V1718 && !IO513) {
-    status_init *= clearbusy_1718(BHandle);
-    if (status_init != 1) 
-      { 
-	printf("\n Trigger enable(v1718)  problems.. STOP!\n");
-	return(1); 
-      }
-  } else if (V1718 && IO513) {
-
-    status_init *= busy_V513(BHandle, DAQ_BUSY_OFF);
-    if (status_init != 1) 
-      { 
-	printf("\n Problem in V513 trigger enable\n");
-	return(1); 
-      }
-     /*
-       start of the event collection cycle
-     */
-    daq_status = reset_daq(BHandle);
-  }
 
   /* Output file initialization  */
   int start, end;
@@ -239,9 +219,6 @@ int main(int argc, char** argv)
   //Clear of header info
   my_header_OD.clear();
 
-  //Reset the scaler counter!
-
-  if(V1718 && ! IO513) daq_status = read_scaler_1718(BHandle);
   /* Start of the event collection cycle */
   while(nevent<(int)max_evts)
     {
@@ -253,22 +230,50 @@ int main(int argc, char** argv)
       hiScale = true;
       trigger = false;
       if(nevent<10) {hm_evt_read = 1; hiScale = false;}
+
+      /*  START of data acquisition */ 
+      if (V1718 && !IO513) {
+	daq_status *= setbusy_1718(BHandle,DAQ_BUSY_OFF);
+	daq_status = read_scaler_1718(BHandle);
+	if (daq_status != 1) 
+	  { 
+	    printf("\n Trigger enable(v1718)  problems.. STOP!\n");
+	    return(1); 
+	  }
+      } else if (V1718 && IO513) {
+	daq_status *= clear_strobe_V513(BHandle); 
+	daq_status *= reset_daq(BHandle);
+	daq_status *= busy_V513(BHandle, DAQ_BUSY_OFF);
+	if (daq_status != 1) 
+	  { 
+	    printf("\n Problem in V513 trigger enable\n");
+	    return(1); 
+	  }
+      }
+
       /* Wait for the trigger signal from the IO */
       if (V1718 && !IO513) {
 	while(!trigger)
 	  {
-	    //	    daq_status = read_trig_1718(BHandle,&trigger); 
-	    daq_status = trigger_scaler_1718(BHandle,&trigger);    
+	    daq_status = trigger_scaler_1718(BHandle,&trigger);
+	    usleep(10);
+	    /* daq_status = read_trig_1718(BHandle,&trigger);     */
 	  }
-	if(daq_status!=1){
-	  printf("\nError while on polling... STOP!\n");
+	if(daq_status==999){
+	  printf("Consider setting a reset...\n");
+	}
+	else if(daq_status!=1){
+	  printf("\nError %d while on polling... STOP!\n",daq_status);
 	  return(1);
 	}
+	daq_status *= setbusy_1718(BHandle,DAQ_BUSY_ON);
+
       } else if (V1718 && IO513) {
 	while(!trigger)
 	  {
 	    trigger = trigger_V513(BHandle);    
 	  }
+	daq_status *= busy_V513(BHandle,DAQ_BUSY_ON);
       }
 
       /* measure the daq time */
@@ -659,7 +664,7 @@ int main(int argc, char** argv)
 	}
       }
 
-      if(V1718 && ! IO513) daq_status = read_scaler_1718(BHandle);
+
 
       //      if(IO513) daq_status = read_V513_old(BHandle, IO_value);
 
@@ -683,27 +688,25 @@ int main(int argc, char** argv)
 	}     
       
 
-      /* Reset the strobe bit and send the reset to the DAQ */
-      if (V1718 && !IO513) {
-	daq_status *= clearbusy_1718(BHandle);
+      /* /\* Reset the strobe bit and send the reset to the DAQ *\/ */
+      /* if (V1718 && !IO513) { */
+      /* 	daq_status *= clearbusy_1718(BHandle); */
 
-	if (daq_status != 1)
-	  {
-	    printf("\nerror resetting V1718 -> exiting\n");
-	    return(1);
-	  }
-      } else if (V1718 && IO513) {
-	/*
-	  reset the strobe bit and send the reset to  the DAQ        
-	*/
-	daq_status *= clear_strobe_V513(BHandle); 
-	daq_status *= reset_daq(BHandle);
-	if (daq_status != 1) 
-	  {
-	    printf("\nerror resetting IO -> exiting\n");
-	    return(1); 
-	  }
-      }
+      /* 	if (daq_status != 1) */
+      /* 	  { */
+      /* 	    printf("\nerror resetting V1718 -> exiting\n"); */
+      /* 	    return(1); */
+      /* 	  } */
+      /* } else if (V1718 && IO513) { */
+      /* 	/\* */
+      /* 	  reset the strobe bit and send the reset to  the DAQ         */
+      /* 	*\/ */
+      /* 	if (daq_status != 1)  */
+      /* 	  { */
+      /* 	    printf("\nerror resetting IO -> exiting\n"); */
+      /* 	    return(1);  */
+      /* 	  } */
+      /* } */
 
       gettimeofday(&tv, NULL);
       tempo_aftwr = ((double)tv.tv_sec) + ((double)tv.tv_usec)/1000000;
