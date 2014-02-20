@@ -16,7 +16,7 @@ using namespace std;
 
 std::vector<unsigned long> adcaddrs;
 
-unsigned short init_adc792(int32_t BHandle) {
+unsigned short init_adc792(int32_t BHandle,int idB) {
 
   int status=1;
   unsigned long address;
@@ -29,23 +29,29 @@ unsigned short init_adc792(int32_t BHandle) {
   if(NUMADBOARDS >= 3) adcaddrs.push_back(V792N_ADDRESS3);
 
   //Initialize all the boards
-  for(int iBo = 0; iBo<NUMADBOARDS; iBo++) {
+  if (idB>adcaddrs.size()-1)
+    {
+      std::cout << "ADC CARD requested " << idB << " not available" << std::endl;
+      return 2;
+    }
+
+
 
     /* QDC Reset */
-    address =  adcaddrs.at(iBo) + 0x1000;
+    address =  adcaddrs.at(idB) + 0x1000;
     caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
 
     if(status != 1) {
-      printf("Error READING %d V792N firmware -> address=%lx \n",iBo,address);
+      printf("Error READING %d V792N firmware -> address=%lx \n",idB,address);
       return status;
     }
     else {
-      if(adc792_debug) printf("V792N %d firmware is version:  %lx \n",iBo,DataLong);
+      if(adc792_debug) printf("V792N %d firmware is version:  %lx \n",idB,DataLong);
     }
 
     //Bit set register
-    address = adcaddrs.at(iBo) + 0x1006;
+    address = adcaddrs.at(idB) + 0x1006;
     DataLong = 0x80; //Issue a software reset. To be cleared with bit clear register access
     caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
@@ -58,7 +64,7 @@ unsigned short init_adc792(int32_t BHandle) {
     }
     
     //Control Register: enable BLK_end
-    address = adcaddrs.at(iBo) + 0x1010;
+    address = adcaddrs.at(idB) + 0x1010;
     DataLong = 0x4; //Sets bit 2 to 1 [enable blkend]
 
     caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
@@ -71,7 +77,7 @@ unsigned short init_adc792(int32_t BHandle) {
     }
     
     //Bit clear register
-    address = adcaddrs.at(iBo) + 0x1008;
+    address = adcaddrs.at(idB) + 0x1008;
     DataLong = 0x80; //Release the software reset. 
     caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
@@ -85,7 +91,7 @@ unsigned short init_adc792(int32_t BHandle) {
     //Bit set register 2
     //Enable/disable zero suppression
     if(nZS) {
-      address = adcaddrs.at(iBo) + 0x1032;
+      address = adcaddrs.at(idB) + 0x1032;
       DataLong = 0x1018; //Disable Zero Suppression + disable overfl
       caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
       status *= (1-caenst); 
@@ -94,7 +100,7 @@ unsigned short init_adc792(int32_t BHandle) {
 	return status;
       }
     } else {
-      address = adcaddrs.at(iBo) + 0x1032;
+      address = adcaddrs.at(idB) + 0x1032;
       DataLong = 0x1008; //Enable Zero Suppression + disable overfl
       caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
       status *= (1-caenst); 
@@ -106,8 +112,8 @@ unsigned short init_adc792(int32_t BHandle) {
     
     //Set the thresholds.
     for(int i=0; i< V792N_CHANNEL; i++) {
-      //      address = adcaddrs.at(iBo) + 0x1080 +4*i; //every 4 for V792N
-      address = adcaddrs.at(iBo) + 0x1080 +2*i; //every 2 for V792
+      //      address = adcaddrs.at(idB) + 0x1080 +4*i; //every 4 for V792N
+      address = adcaddrs.at(idB) + 0x1080 +2*i; //every 2 for V792
       if(adc792_debug) printf("Channel %d Address : %lx\n",i,address);
       DataLong = 0x0; //Threshold
       caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
@@ -120,7 +126,7 @@ unsigned short init_adc792(int32_t BHandle) {
     }
     
     //Set the Iped value to XX value [180, defaults; >60 for coupled channels]
-    address = adcaddrs.at(iBo) + 0x1060;
+    address = adcaddrs.at(idB) + 0x1060;
     //  status = vme_read_dt(address, &DataLong, AD32, D16);
     caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
@@ -136,12 +142,35 @@ unsigned short init_adc792(int32_t BHandle) {
       printf("Iped register read: %li\n", DataLong);
       return status;
     }
-  }//End of multiple boards loop
+
   return status;
- }
+}
 
 
+unsigned short dataReset792(int32_t BHandle, int32_t address)
+{
+  unsigned short status = 1;
+  unsigned short caenst;
+  unsigned int rst=0x4;
+  caenst = CAENVME_WriteCycle(BHandle,address+V792N_BIT_SET2,&rst,cvA24_U_DATA,cvD16);
+  status *= (1-caenst); 
+  caenst = CAENVME_WriteCycle(BHandle,address+V792N_BIT_CLEAR2,&rst,cvA24_U_DATA,cvD16);
+  status *= (1-caenst); 
+  return status;
+}
 
+
+unsigned short softReset792(int32_t BHandle, int32_t address)
+{
+  unsigned short status = 1;
+  unsigned short caenst;
+  unsigned int rst=0x80;
+  caenst = CAENVME_WriteCycle(BHandle,address+V792N_BIT_SET1,&rst,cvA24_U_DATA,cvD16);
+  status *= (1-caenst); 
+  caenst = CAENVME_WriteCycle(BHandle,address+V792N_BIT_CLEAR1,&rst,cvA24_U_DATA,cvD16);
+  status *= (1-caenst); 
+  return status;
+}
 
 /*------------------------------------------------------------------*/
 
@@ -398,19 +427,17 @@ vector<int> readFastadc792(int32_t BHandle, int idB, short int& status)
   bool full = data &  adc792_bitmask.full; 
   bool empty = data &  adc792_bitmask.empty;	
 
-   if(full || !empty) { 
-     std::cout << "FULL " << full << " EMPTY " << empty << std::endl;
-     /* caenst = CAENVME_WriteCycle(BHandle,address+0x1006,&DataLong,cvA24_U_DATA,cvD16); */
-     /* status *= (1-caenst);  */
-     /* /\*   /\\* caenst = CAENVME_ReadCycle(BHandle,address+0x1006,&DataLong,cvA24_U_DATA,cvD16); *\\/ *\/ */
-     /* /\*   /\\* status *= (1-caenst);  *\\/ *\/ */
-     /* caenst = CAENVME_WriteCycle(BHandle,address+0x1008,&DataLong,cvA24_U_DATA,cvD16); */
-     /* status *= (1-caenst); */
-     /* /\*   /\\* caenst = CAENVME_ReadCycle(BHandle,address+0x1008,&DataLong,cvA24_U_DATA,cvD16); *\\/ *\/ */
-     /* /\*   /\\* status *= (1-caenst);  *\\/ *\/ */
-     /*  if(status != 1) { */
-     /* 	printf("Could not reset"); */
-     /*  } */
+   if(full || !empty || status!=1 ) { 
+     std::cout << "FULL " << full << " EMPTY " << empty << " STATUS " << status << std::endl;
+     //Try a dataReset
+     int dtRst=dataReset792(BHandle,address);
+     if (dtRst!=1)
+       {
+	 //Now try a full software reset
+	 softReset792(BHandle,address);
+	 //Reinialize the module
+	 init_adc792(BHandle,idB);
+       }
    }
 
   /* } */

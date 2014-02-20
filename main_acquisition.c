@@ -166,7 +166,7 @@ int main(int argc, char** argv)
   /* ADC 792 initialization */
   if(ADC792) {
     printf("\n Initialization of ADC 792\n");
-    status_init *= init_adc792(BHandle);
+    status_init *= init_adc792(BHandle,0); //Initialize the first card
     if (status_init != 1) 
       {
 	printf("Error in ADC 792 initialization... STOP!\n");

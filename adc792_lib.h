@@ -37,7 +37,9 @@
 
 #define adc792_debug    1
 
-unsigned short init_adc792(int32_t BHandle);
+unsigned short init_adc792(int32_t BHandle,int idB);
+unsigned short dataReset792(int32_t BHandle, int32_t address);
+unsigned short softReset792(int32_t BHandle, int32_t address);
 std::vector<int> read_adc792(int32_t BHandle, short int& status);
 std::vector<int> readFastadc792(int32_t BHandle, int idB, short int& status);
 std::vector<int> readFastNadc792(int32_t BHandle, int idB, short int& status, int nevts, std::vector<int> &outW);
