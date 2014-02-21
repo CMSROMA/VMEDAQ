@@ -47,8 +47,6 @@ int init_1718(int32_t BHandle) {
   */
 
   /* setting which output line must be pulsed  */
-  
-
   //  Mask = cvOut0Bit + cvOut1Bit + cvOut2Bit + cvOut3Bit + cvOut4Bit;
   Mask = cvOut0Bit + cvOut1Bit;
   caenst = CAENVME_SetOutputRegister(BHandle,Mask);
@@ -87,7 +85,7 @@ int init_scaler_1718(int32_t BHandle) {
   /*---------------   end setting IO reg section of V1718 ----------------*/
 
 int init_pulser_1718(int32_t BHandle) {
-  unsigned char Period=20, Width=10,PulseNo=1;
+  unsigned char Period=1, Width=1,PulseNo=1;
   int status, caenst;
   CVTimeUnits Unit;
   CVIOSources Start, Reset;
@@ -114,10 +112,10 @@ int reset_nim_scaler_1718(int32_t BHandle) {
 
   unsigned short Mask=0;
   Mask = cvOut3Bit;
-  caenst = CAENVME_SetOutputRegister(BHandle,Mask);
+  caenst = CAENVME_PulseOutputRegister(BHandle,Mask);
   status *= (1-caenst);
-  caenst = CAENVME_ClearOutputRegister(BHandle,Mask);
-  status *= (1-caenst);
+  /* caenst = CAENVME_ClearOutputRegister(BHandle,Mask); */
+  /* status *= (1-caenst); */
   return status;
 }
 
@@ -205,8 +203,9 @@ int set_configuration_1718(int32_t BHandle)
   /* registerValues["InputReg"]=cvInputReg; */
   /* registerValues["OutReg"]=cvOutRegSet; */
 
-  registerValues[cvInMuxRegSet]=0x488; //SCALER HIT SOURCE=1,PULSER A START SOURCE=IN0,PULSER B START SOURCE=IN1,
-  registerValues[cvOutMuxRegSet]=0x3FB; //OUT0=OUTREGISTER, OUT1=PULSERA,OUT2,OUTREGISTER,OUT3=OUTREGISTER,OUT4=OUTREGISTER
+  /* registerValues[cvInMuxRegSet]=0x488; //SCALER HIT SOURCE=1,PULSER A START SOURCE=IN0,PULSER B START SOURCE=IN1, */
+  /* registerValues[cvOutMuxRegSet]=0x3FB; //OUT0=OUTREGISTER, OUT1=PULSERA,OUT2,OUTREGISTER,OUT3=OUTREGISTER,OUT4=OUTREGISTER */
+  registerValues[cvOutMuxRegSet]=0x3FA; 
 
   /* registerValues["PulserATime"]=cvPulserA0; */
   /* registerValues["PulserAPulses"]=cvPulserA1; */
@@ -239,19 +238,20 @@ int setbusy_1718(int32_t BHandle,int command) {
   /* Mask = cvOut3Bit+cvOut4Bit; */
   /* caenst = CAENVME_PulseOutputRegister(BHandle,Mask); */
   /* status *= (1-caenst); */
-  Mask = cvOut0Bit+cvOut2Bit;
-  if(command==DAQ_BUSY_ON)
+
+
+  if(command==DAQ_BUSY_OFF)
     {
-      caenst = CAENVME_SetOutputRegister(BHandle,Mask+cvOut4Bit);
+      Mask = cvOut0Bit;
+      caenst = CAENVME_PulseOutputRegister(BHandle,Mask);
       status *= (1-caenst);
     }
-  else
+  else if(command==DAQ_TRIG_ACK)
     {
-      caenst = CAENVME_ClearOutputRegister(BHandle,Mask);
+      Mask = cvOut1Bit;
+      caenst = CAENVME_PulseOutputRegister(BHandle,Mask);
       status *= (1-caenst);
     }
-  caenst = CAENVME_EnableScalerGate(BHandle);  //Maybe use a better function to avoid disabling the scaler gate....
-  status *= 1-caenst;
   return status;
 }
 

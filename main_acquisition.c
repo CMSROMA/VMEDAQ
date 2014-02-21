@@ -97,7 +97,7 @@ int main(int argc, char** argv)
       status_init *= print_configuration_1718(BHandle);
       status_init *= init_scaler_1718(BHandle) ;
       status_init *= reset_nim_scaler_1718(BHandle) ;
-      status_init *= setbusy_1718(BHandle,DAQ_BUSY_ON);
+      /* status_init *= setbusy_1718(BHandle,DAQ_BUSY_ON); */
       if (status_init != 1) { return(1); }
       
     } 
@@ -234,9 +234,8 @@ int main(int argc, char** argv)
 
       /*  START of data acquisition */ 
       if (V1718 && !IO513) {
-	daq_status *= setbusy_1718(BHandle,DAQ_BUSY_OFF);
-	daq_status *= read_scaler_1718(BHandle);
-
+	daq_status *= read_scaler_1718(BHandle); //reset scaler
+	daq_status *= setbusy_1718(BHandle,DAQ_BUSY_OFF); //busy off to latch the busy bit
 	if (daq_status != 1) 
 	  { 
 	    printf("\n Trigger enable(v1718)  problems.. STOP!\n");
@@ -258,8 +257,6 @@ int main(int argc, char** argv)
 	while(!trigger)
 	  {
 	    daq_status = trigger_scaler_1718(BHandle,&trigger);
-	    usleep(10);
-	    /* daq_status = read_trig_1718(BHandle,&trigger);     */
 	  }
 	if(daq_status==999){
 	  printf("Consider setting a reset...\n");
@@ -268,14 +265,13 @@ int main(int argc, char** argv)
 	  printf("\nError %d while on polling... STOP!\n",daq_status);
 	  return(1);
 	}
-	daq_status *= setbusy_1718(BHandle,DAQ_BUSY_ON);
+	daq_status *= setbusy_1718(BHandle,DAQ_TRIG_ACK); //acknowledge of the trigger to latch the trigger bit
 
       } else if (V1718 && IO513) {
 	while(!trigger)
 	  {
 	    trigger = trigger_V513(BHandle);    
 	  }
-	daq_status *= busy_V513(BHandle,DAQ_BUSY_ON);
       }
 
       /* measure the daq time */
@@ -366,7 +362,6 @@ int main(int argc, char** argv)
 	  board_num += 8;
 	  adcWords = my_adc_OD.size();
 	}
-	
 	/* read the ADC 792*/
 	if(ADC792) {
 	  my_adc792_OD.clear();

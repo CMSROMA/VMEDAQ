@@ -1,8 +1,9 @@
 #include "CAENVMElib.h"
 #include "CAENVMEtypes.h" 
 #include "CAENVMEoslib.h"
-#define DAQ_BUSY_ON      0x1
+
 #define DAQ_BUSY_OFF     0x0
+#define DAQ_TRIG_ACK     0x1
 
 int init_1718(int32_t BHandle);
 int init_scaler_1718(int32_t BHandle);

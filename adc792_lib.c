@@ -439,7 +439,7 @@ vector<int> readFastadc792(int32_t BHandle, int idB, short int& status)
 	 init_adc792(BHandle,idB);
        }
    }
-
+//
   /* } */
   
   if(adc792_debug) {
