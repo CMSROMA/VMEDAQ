@@ -96,7 +96,6 @@ int main(int argc, char** argv)
       status_init *= set_configuration_1718(BHandle);
       status_init *= print_configuration_1718(BHandle);
       status_init *= init_scaler_1718(BHandle) ;
-      status_init *= reset_nim_scaler_1718(BHandle) ;
       /* status_init *= setbusy_1718(BHandle,DAQ_BUSY_ON); */
       if (status_init != 1) { return(1); }
       
@@ -219,6 +218,8 @@ int main(int argc, char** argv)
 
   //Clear of header info
   my_header_OD.clear();
+
+  status_init *= reset_nim_scaler_1718(BHandle) ;
 
   /* Start of the event collection cycle */
   while(nevent<(int)max_evts)

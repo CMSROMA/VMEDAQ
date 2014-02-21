@@ -47,8 +47,8 @@ int init_1718(int32_t BHandle) {
   */
 
   /* setting which output line must be pulsed  */
-  //  Mask = cvOut0Bit + cvOut1Bit + cvOut2Bit + cvOut3Bit + cvOut4Bit;
-  Mask = cvOut0Bit + cvOut1Bit;
+  Mask = cvOut0Bit + cvOut1Bit + cvOut2Bit + cvOut3Bit + cvOut4Bit;
+  //  Mask = cvOut0Bit + cvOut1Bit;
   caenst = CAENVME_SetOutputRegister(BHandle,Mask);
   status *= (1-caenst);
   
