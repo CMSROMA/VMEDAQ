@@ -16,6 +16,52 @@ using namespace std;
 
 std::vector<unsigned long> adcaddrs;
 
+void print_adc792_debug_word(uint32_t word)
+{
+  short dt_type = word>>24 & 0x7;
+  if (dt_type==0)
+    {
+      // adc_chan = data>>17 & 0xF; //For 792N [bit 17-20]
+      short adc_chan = word>>16 & 0x1F; //For 792 [bit 16-20]
+      
+      unsigned int adc_value = word & 0xFFF; // adc data [bit 0-11]
+      bool adc_overflow = (word>>12) & 0x1; // overflow bit [bit 12]
+      bool adc_underthreshold = (word>>13) & 0x1; // under threshold bit [bit 13]
+      std::cout << "raw " << word << "\tchannel " << adc_chan << "\tvalue " << adc_value << "\toverflow " << adc_overflow << "\tunderthreshold " << adc_underthreshold << std::endl;
+    }
+}
+
+void check_adc792_status_afterRead(int32_t BHandle,int idB)
+{
+  uint32_t address =  adcaddrs.at(idB);
+  uint32_t data;
+  int status=1;
+
+  int caenst = CAENVME_ReadCycle(BHandle,address+adc792_shift.statusreg2,&data,cvA24_U_DATA,cvD16);
+  status *= (1-caenst);
+
+  if(status != 1) {
+    printf("Could not read statusreg2\n");
+  }
+  
+  bool full = data &  adc792_bitmask.full; 
+  bool empty = data &  adc792_bitmask.empty;	
+
+   if(full || !empty || status!=1 ) { 
+     std::cout << "FULL " << full << " !EMPTY " << !empty << " STATUS " << status << std::endl;
+     //Try a dataReset
+     int dtRst=dataReset792(BHandle,address);
+     if (dtRst!=1)
+       {
+	 //Now try a full software reset
+	 softReset792(BHandle,address);
+	 //Reinialize the module
+	 init_adc792(BHandle,idB);
+       }
+   }
+
+}
+
 unsigned short init_adc792(int32_t BHandle,int idB) {
 
   int status=1;
@@ -398,48 +444,12 @@ vector<int> readFastadc792(int32_t BHandle, int idB, short int& status)
     //Vector dump into output
     idV = 0; while(idV<ncha+1) { 
       outD.push_back((int)dataV[idV]);
-      if (adc792_debug)
-	{
-	  short dt_type = dataV[idV]>>24 & 0x7;
-	  if (dt_type==0)
-	    {
-	      // adc_chan = data>>17 & 0xF; //For 792N [bit 17-20]
-	      short adc_chan = dataV[idV]>>16 & 0x1F; //For 792 [bit 16-20]
-	      
-	      unsigned int adc_value = dataV[idV] & 0xFFF; // adc data [bit 0-11]
-	      bool adc_overflow = (dataV[idV]>>12) & 0x1; // overflow bit [bit 12]
-	      bool adc_underthreshold = (dataV[idV]>>13) & 0x1; // under threshold bit [bit 13]
-	      std::cout << "Line " << idV << "\traw " << dataV[idV] << "\tchannel " << adc_chan << "\tvalue " << adc_value << "\toverflow " << adc_overflow << "\tunderthreshold " << adc_underthreshold << std::endl;
-	    }
-	}
-      //      cout<<" "<<(int)dataV[idV]<<" "<<idV<<endl; 
+      if (adc792_debug) print_adc792_debug_word(dataV[idV]);
       idV++;  }
   }
 
-  /* //Check the status register to check the MEB status */
-  /* //status = vme_read_dt(address,&data,AD32,D16); */
-  caenst = CAENVME_ReadCycle(BHandle,address+adc792_shift.statusreg2,&data,cvA24_U_DATA,cvD16);
-  status *= (1-caenst);
-  if(status != 1) {
-    printf("Could not read statusreg2\n");
-  }
-  
-  bool full = data &  adc792_bitmask.full; 
-  bool empty = data &  adc792_bitmask.empty;	
 
-   if(full || !empty || status!=1 ) { 
-     std::cout << "FULL " << full << " EMPTY " << empty << " STATUS " << status << std::endl;
-     //Try a dataReset
-     int dtRst=dataReset792(BHandle,address);
-     if (dtRst!=1)
-       {
-	 //Now try a full software reset
-	 softReset792(BHandle,address);
-	 //Reinialize the module
-	 init_adc792(BHandle,idB);
-       }
-   }
-//
+  check_adc792_status_afterRead(BHandle,idB);
   /* } */
   
   if(adc792_debug) {
@@ -464,10 +474,10 @@ vector<int> readFastNadc792(int32_t BHandle, int idB, short int& status, int nev
   int caenst;
   unsigned long data,address;
   //AS  unsigned long dataV[34];
-  unsigned long dataV[18*nevts];
-  int wr;
+  unsigned int dataV[34*nevts]; //each event is composed of 34x32bit words
+  unsigned int wr;
   unsigned long adc792_rdy, adc792_busy;
-  unsigned int ncha(16), idV;
+  unsigned int ncha(32), idV; //no ZS reading all 32 channels
 
   if(idB<0 || idB>NUMADBOARDS-1) {
     cout<<" Accssing Board number"<<idB<<" while only "<<NUMADBOARDS<<" are initialized!!! Check your configuration!"<<endl;
@@ -482,19 +492,19 @@ vector<int> readFastNadc792(int32_t BHandle, int idB, short int& status, int nev
   caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
   status *= (1-caenst); 
 
-  if(adc792_debug) printf("ST (str1) :: %i, %lx, %lx \n",status,address,data);
+  /* if(adc792_debug) printf("ST (str1) :: %i, %lx, %lx \n",status,address,data); */
   adc792_rdy = data & adc792_bitmask.rdy;
   adc792_busy = data & adc792_bitmask.busy;
   int tmpW;
   unsigned long full,empty;
 
-  //Check the status register to check the MEB status
-  address = adcaddrs.at(idB) + adc792_shift.statusreg2;
-  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
-  status *= (1-caenst); 
+  /* //Check the status register to check the MEB status */
+  /* address = adcaddrs.at(idB) + adc792_shift.statusreg2; */
+  /* caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16); */
+  /* status *= (1-caenst);  */
 
-  full = data &  adc792_bitmask.full;
-  empty = data &  adc792_bitmask.empty;
+  /* full = data &  adc792_bitmask.full; */
+  /* empty = data &  adc792_bitmask.empty; */
 
   //Event counter register
   if(adc792_debug)  cout<<" rdy:: "<<adc792_rdy<<" busy:: "<<adc792_busy<<endl;
@@ -511,25 +521,21 @@ vector<int> readFastNadc792(int32_t BHandle, int idB, short int& status, int nev
     //Vector reset
     idV = 0; while(idV<(ncha+2)*nevts) { dataV[idV] = 0; idV++; }
     wr = (ncha+2)*4*nevts; 
+    //    wr = sizeof(dataV);
 
     caenst = CAENVME_BLTReadCycle(BHandle,address,dataV,wr,
 				  cvA24_U_DATA,cvD32,&nbytes_tran);
     status *= (1-caenst); 
 
-    //Check the status register to check the MEB status
-    address = adcaddrs.at(idB) + adc792_shift.statusreg2;
-    caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
-    status *= (1-caenst); 
-
     //Vector dump into output
     idV = 0; while(idV<(ncha+2)*nevts) { 
       outD.push_back((int)dataV[idV]); 
+      //   if (adc792_debug) print_adc792_debug_word(dataV[idV]);
       idV++;  
     }
 
-    full = data &  adc792_bitmask.full;
-    empty = data &  adc792_bitmask.empty;
 
+    /*
     int ntry = 100, nt = 0;
     while(!empty && nt<ntry) {
       //Check the status register to check the MEB status
@@ -541,6 +547,7 @@ vector<int> readFastNadc792(int32_t BHandle, int idB, short int& status, int nev
       //Vector dump into output
       idV = 0; while(idV<(ncha+2)) { 
 	outD.push_back((int)dataV[idV]); 
+	if (adc792_debug) print_adc792_debug_word(dataV[idV]);
 	idV++;  
       }
 
@@ -554,8 +561,12 @@ vector<int> readFastNadc792(int32_t BHandle, int idB, short int& status, int nev
       nt++;
     }
     if(nt) cout<<" Warning:: needed "<<nt<<" add read to clean up MEB"<<endl;
+    */
+
+    check_adc792_status_afterRead(BHandle,idB);
 
     outW.push_back(18);
+
   }
 
   return outD;

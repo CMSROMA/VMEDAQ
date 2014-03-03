@@ -91,7 +91,7 @@ int init_pulser_1718(int32_t BHandle) {
   CVIOSources Start, Reset;
 
   printf("Init PULSER v1718\n");
-  Unit = cvUnit1600ns;
+  Unit = cvUnit25ns;
   Start = cvManualSW;
   Reset = cvManualSW;
 

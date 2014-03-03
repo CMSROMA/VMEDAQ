@@ -33,7 +33,7 @@ int main(int argc, char** argv)
 {
   unsigned long  max_evts=9000;
   int nevent = 0;
-  short trigger_OK, daq_status, status_init;
+  short daq_status, status_init;
   int i; 
   double rate;
   int32_t BHandle(0);
@@ -213,7 +213,7 @@ int main(int argc, char** argv)
   time_start = tempo_start;
   time_last = tempo_start;
   
-  int in_evt_read = 1; bool read_boards;
+  int in_evt_read = 10; bool read_boards;
   int hm_evt_read; bool hiScale = true;
 
   //Clear of header info
@@ -225,7 +225,6 @@ int main(int argc, char** argv)
   while(nevent<(int)max_evts)
     {
       board_num = 0;
-      trigger_OK = 0;
       daq_status = 1;
       hm_evt_read = in_evt_read;
       //      hm_evt_read = 1;
@@ -368,8 +367,8 @@ int main(int argc, char** argv)
 	  my_adc792_OD.clear();
 	  my_adc792_WD.clear();
 	  //my_adc792_OD = read_adc792(BHandle,daq_status); 
-	  my_adc792_OD = readFastadc792(BHandle,0,daq_status); 
-	  //my_adc792_OD = readFastNadc792(BHandle,0,daq_status,hm_evt_read,my_adc792_WD); 
+	  //	  my_adc792_OD = readFastadc792(BHandle,0,daq_status); 
+	  my_adc792_OD = readFastNadc792(BHandle,0,daq_status,hm_evt_read,my_adc792_WD); 
 	  //	  if(!my_adc792_OD.size())  cout<<" Warning:: QDC0 Read :: "<< my_adc792_OD.size()<<" "<< my_adc792_WD.size()<<endl;
 	  if (daq_status != 1) 
 	    {

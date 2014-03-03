@@ -37,6 +37,8 @@
 
 #define adc792_debug    1
 
+void print_adc792_debug_word(uint32_t word);
+void check_adc792_status_afterRead(int32_t BHandle,int idB);
 unsigned short init_adc792(int32_t BHandle,int idB);
 unsigned short dataReset792(int32_t BHandle, int32_t address);
 unsigned short softReset792(int32_t BHandle, int32_t address);
