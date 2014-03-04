@@ -468,6 +468,7 @@ vector<int> readFastNadc792(int32_t BHandle, int idB, short int& status, int nev
     Implements Block Transfer Readout of V792N 
     returns vector with output
   */
+
   int nbytes_tran = 0;
   vector<int> outD; outD.clear();
   status = 1; 
@@ -564,11 +565,34 @@ vector<int> readFastNadc792(int32_t BHandle, int idB, short int& status, int nev
     */
 
     check_adc792_status_afterRead(BHandle,idB);
-
-    outW.push_back(18);
-
   }
 
   return outD;
 }
 
+int find_adc792_eventSize(std::vector<int>& events,unsigned int evtStart)
+{
+  short dt_type_boe = events.at(evtStart)>>24 & 0x7;
+  if (dt_type_boe != 2)
+    {
+      std::cout << "ADC 792:: NOT AT BEGIN OF EVENT. Data are probably corrupted" << std::endl;
+      return -1;
+    }
+
+  int channelsReadout =  events.at(evtStart)>>8 & 0x3F;  
+
+  short dt_type_eoe = events.at(evtStart+channelsReadout+1)>>24 & 0x7;
+  if (dt_type_eoe != 4)
+    {
+      std::cout << "ADC 792:: NOT AT END OF EVENT. Data are probably corrupted" << std::endl;
+      return -1;
+    }
+  
+  if (adc792_debug)
+    {
+      int evtNum=events.at(evtStart+channelsReadout+1) & 0xFFFFFF;
+      std::cout << "ADC 792:: EVENT " << evtNum << " has " << channelsReadout << " channels readout"<< std::endl; 
+    }
+
+  return channelsReadout+2;
+}
