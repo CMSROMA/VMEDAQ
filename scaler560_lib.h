@@ -5,8 +5,9 @@
 #include "CAENVMEoslib.h"
 
 #include <vector>
+#include "modules_config.h"
 
-#define  V560_ADDRESS   0x700000 /* fissato dai rotary switches sulla scheda */
+#define  V560_ADDRESS   V560_0_BA /* fissato dai rotary switches sulla scheda */
 #define  V560_CHANNEL    16      /* contatori a 32 bit */
 
 #define V560_REG_STATUS       0x58
@@ -38,7 +39,7 @@
 
 int init_scaler560(int32_t BHandle);
 int read_scaler560(int32_t BHandle, int *pScalerData);
-std::vector<int> read_scaler560Vec(int32_t BHandle, int status);
+std::vector<uint32_t> read_scaler560Vec(int32_t BHandle, int status);
 int read_scaler560_single(int32_t BHandle, int *pScalerData, int nchan);
 int write_scaler560(int32_t BHandle, int *pScalerData);
 

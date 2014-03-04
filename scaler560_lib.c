@@ -11,6 +11,7 @@
 
 using namespace std;
 
+#define scaler560_debug 1
 /*-----------------------------------------------------------------------------------*/
   
 int init_scaler560(int32_t BHandle){
@@ -128,15 +129,21 @@ int read_scaler560(int32_t BHandle,int *pdata){
     printf("Error reading scaler V560\n");
   }
   
+  if (scaler560_debug)
+    {
+      for (int i(0);i<16;++i)
+	std::cout << "V560:: channel " << i << " has " << *(pdata+i) << " counts" << std::endl;
+    }
+  
   return status;
 }
 
 /*------------------------------------------------------------*/
 
-vector<int> read_scaler560Vec(int32_t BHandle, int status){
+vector<uint32_t> read_scaler560Vec(int32_t BHandle, int status){
 
   int caenst=1;
-  vector<int> data;
+  vector<uint32_t> data;
   data.clear();
   unsigned long address,DataLong;
   for(int i=0; i<V560_CHANNEL; i++) {    
@@ -151,6 +158,12 @@ vector<int> read_scaler560Vec(int32_t BHandle, int status){
     printf("Error reading scaler V560\n");
   }
   
+  if (scaler560_debug)
+    {
+      for (unsigned int i(0);i<data.size();++i)
+	std::cout << "V560:: channel " << i << " has " << data[i] << " counts" << std::endl;
+    }
+
   return data;
 }
 

@@ -11,7 +11,7 @@
 #define ADC792 1
 #define ADC792_2 0
 #define ADC792_3 0
-#define SCALER560 0
+#define SCALER560 1
 #define debug 1
 
 /* 1 modulo attivo*/

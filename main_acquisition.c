@@ -198,7 +198,7 @@ int main(int argc, char** argv)
   vector<int> my_adc792_OD, my_adc792_WD;
   vector<int> my_adc792_2_OD, my_adc792_2_WD;
   vector<int> my_adc792_3_OD, my_adc792_3_WD;
-  vector<int> my_scal_OD, my_scal_WD, tmpscaD;
+  vector<uint32_t> my_scal_OD, my_scal_WD, tmpscaD;
   vector<int> my_header_OD;
 
   myOut.open(f_value,ios::out);
@@ -213,15 +213,20 @@ int main(int argc, char** argv)
   time_start = tempo_start;
   time_last = tempo_start;
   
-  int in_evt_read = 10; bool read_boards;
-  int hm_evt_read; bool hiScale = true;
+  int in_evt_read = 10; 
+  bool read_boards,read_scaler;
+  int hm_evt_read; 
+  bool hiScale = true;
 
   //Clear of header info
   my_header_OD.clear();
 
   status_init *= reset_nim_scaler_1718(BHandle) ;
 
+  int nreadout=0;
+
   /* Start of the event collection cycle */
+
   while(nevent<(int)max_evts)
     {
       board_num = 0;
@@ -230,7 +235,9 @@ int main(int argc, char** argv)
       //      hm_evt_read = 1;
       hiScale = true;
       trigger = false;
-      if(nevent<10) {hm_evt_read = 1; hiScale = false;}
+
+      //nasty... 
+      if(nevent<in_evt_read) {hm_evt_read = 1; hiScale = false;}
 
       /*  START of data acquisition */ 
       if (V1718 && !IO513) {
@@ -292,6 +299,7 @@ int main(int argc, char** argv)
       headWords = my_header_OD.size();
 
       read_boards = false;
+      read_scaler = false;
       nevent++;
 
       if(!(nevent%hm_evt_read)) {
@@ -300,6 +308,8 @@ int main(int argc, char** argv)
       }
 
       if(read_boards) {
+	nreadout++;
+	std::cout << "Reading boards " << nreadout << std::endl;
 	/* read the TDC 1190 */
 	if(TDC1190) {
 	  my_tdc_OD.clear();
@@ -423,19 +433,29 @@ int main(int argc, char** argv)
 
 	  //Needed only if you read each event. In this implementation the 
 	  //tmp Vector is no longer needed.
-	  my_scal_WD.push_back(V560_CHANNEL);
-	  tmpscaD.clear();
-	  tmpscaD = read_scaler560Vec(BHandle,daq_status); 
-	  my_scal_OD.insert( my_scal_OD.end(), tmpscaD.begin(), tmpscaD.end() );
-
-	  board_num += 128;
-	  scalWords = my_scal_OD.size();
-	  //	  cout<<my_scal_OD.at(0)<<" "<<my_scal_OD.at(1)<<" "<<my_scal_OD.at(2)<<" "<<my_scal_OD.at(3)<<" "<<my_scal_OD.at(4)<<endl;
-	  if(!my_scal_OD.size())  cout<<" Warning:: Scaler Read :: "<< my_scal_OD.size()<<" "<< my_scal_WD.size()<<endl;
-	  if (daq_status != 1) 
+	  //read the SCALER 1 in 100 times
+	  if (nreadout%100==0)
 	    {
-	      printf("\nError reading SCALER 560... STOP!\n");
-	      return(1);
+	      std::cout << "Reading scaler" << std::endl;
+	      read_scaler=true;
+	    }
+
+	  if (read_scaler)
+	    {
+	      my_scal_WD.push_back(V560_CHANNEL);
+	      tmpscaD.clear();
+	      tmpscaD = read_scaler560Vec(BHandle,daq_status); 
+	      my_scal_OD.insert( my_scal_OD.end(), tmpscaD.begin(), tmpscaD.end() );
+	      
+	      board_num += 128;
+	      scalWords = my_scal_OD.size();
+	      //	  cout<<my_scal_OD.at(0)<<" "<<my_scal_OD.at(1)<<" "<<my_scal_OD.at(2)<<" "<<my_scal_OD.at(3)<<" "<<my_scal_OD.at(4)<<endl;
+	      if(!my_scal_OD.size())  cout<<" Warning:: Scaler Read :: "<< my_scal_OD.size()<<" "<< my_scal_WD.size()<<endl;
+	      if (daq_status != 1) 
+		{
+		  printf("\nError reading SCALER 560... STOP!\n");
+		  return(1);
+		}
 	    }
 	}
 
@@ -555,12 +575,14 @@ int main(int argc, char** argv)
 	  }
 
 	  if(SCALER560) {
-	    //Only dump the scaler on the 'FIRST set of events'
+	    //Only dump the scaler on the of the event readout'
 	    if(my_scal_WD.size()) {
 	      if(d_value) cout<<" This scaler evt has "<<my_scal_WD.at(0)<<" words"<<endl;
-	      if(ie == 0) myOE.push_back(my_scal_WD.at(0));
+	      if(ie == hm_evt_read-1) myOE.push_back(my_scal_WD.at(0));
 	      else myOE.push_back(0);
-	    }
+	    } 
+	    else 
+	      myOE.push_back(0);
 	  }
 	  
 	  if(headWords/hm_evt_read != 3) { 
@@ -638,7 +660,7 @@ int main(int argc, char** argv)
 	  
 	  if(SCALER560 && my_scal_OD.size()) {
 	    //Only dump the scaler on the 'FIRST set of events'
-	    if(ie == 0) { 
+	    if(ie == hm_evt_read-1) { 
 	      end_v560 = start_v560 + my_scal_WD.at(0); 
 	      for(int idum = start_v560; idum<end_v560; idum++) {
 		myOE.push_back(my_scal_OD.at(idum));
@@ -717,6 +739,16 @@ int main(int argc, char** argv)
       elapsed_seconds_dt = tempo_aftwr - tempo_now;
 
     }
+
+  tmpscaD.clear();
+  tmpscaD = read_scaler560Vec(BHandle,daq_status); 
+  if(!tmpscaD.size())  cout<<" Warning:: Scaler Read :: "<< tmpscaD.size() << std::endl;
+  if (daq_status != 1) 
+    {
+      printf("\nError reading SCALER 560... STOP!\n");
+      return(1);
+    }
+
   /* Output File finalization */  
   printf("\n Closing output file!\n");
   myOut.close();
