@@ -309,7 +309,6 @@ int main(int argc, char** argv)
 
       if(read_boards) {
 	nreadout++;
-	std::cout << "Reading boards " << nreadout << std::endl;
 	/* read the TDC 1190 */
 	if(TDC1190) {
 	  my_tdc_OD.clear();
@@ -433,12 +432,10 @@ int main(int argc, char** argv)
 
 	  //Needed only if you read each event. In this implementation the 
 	  //tmp Vector is no longer needed.
+
 	  //read the SCALER 1 in 100 times
 	  if (nreadout%100==0)
-	    {
-	      std::cout << "Reading scaler" << std::endl;
 	      read_scaler=true;
-	    }
 
 	  if (read_scaler)
 	    {
@@ -704,7 +701,7 @@ int main(int argc, char** argv)
 	  time_last = time_now;
 	  
 	  if(delta_seconds) rate = ((double)p_value)/delta_seconds;
-	  printf("\n Event number =%d. El time (s): %f. Freq (Hz): %lf \n",
+	  printf("_____ Event number =%d. El time (s): %f. Freq (Hz): %lf ______\n",
 		 nevent,delta_seconds,rate);
 	  if(!access("acq.stop",F_OK)) {
 	    cout<<"Stopped run from acq.stop : deleting acq.stop file"<<endl;
