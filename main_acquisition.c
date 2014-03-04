@@ -701,7 +701,7 @@ int main(int argc, char** argv)
 	  time_last = time_now;
 	  
 	  if(delta_seconds) rate = ((double)p_value)/delta_seconds;
-	  printf("_____ Event number =%d. El time (s): %f. Freq (Hz): %lf ______\n",
+	  printf("_____ Event number: %d El time (s): %f Freq (Hz): %lf ______\n",
 		 nevent,delta_seconds,rate);
 	  if(!access("acq.stop",F_OK)) {
 	    cout<<"Stopped run from acq.stop : deleting acq.stop file"<<endl;
@@ -737,6 +737,7 @@ int main(int argc, char** argv)
 
     }
 
+  std::cout << "++++++ Final run statistics +++++++" << std::endl;
   tmpscaD.clear();
   tmpscaD = read_scaler560Vec(BHandle,daq_status); 
   if(!tmpscaD.size())  cout<<" Warning:: Scaler Read :: "<< tmpscaD.size() << std::endl;
