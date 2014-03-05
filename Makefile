@@ -8,19 +8,27 @@
 # daq for the CAEN bridge v1718
 
 
-OBJS = main_acquisition.o adc265_lib.o adc792_lib.o tdc1190_lib.o tdcV488A_lib.o v1718_lib.o vme_bridge.o V513_lib.o scaler560_lib.o
-HEAD = main_acquisition.h adc265_lib.h adc792_lib.h tdc1190_lib.h tdcV488A_lib.h v1718_lib.h vme_bridge.h V513.h scaler560_lib.h
+OBJS = adc265_lib.o adc792_lib.o tdc1190_lib.o tdcV488A_lib.o v1718_lib.o vme_bridge.o V513_lib.o scaler560_lib.o
+
+BINS = acquire count
 
 INCLUDE_DIR = .
 
 COPTS = -g -Wall -DLINUX -fPIC -I$(INCLUDE_DIR)
 
-acquire: $(OBJS)
-	g++ -g -DLINUX -o acquire $(OBJS) -lncurses -lm -l CAENVME
+all: $(BINS)
 
+acquire: $(OBJS) main_acquisition.o
+	g++ -g -DLINUX -o acquire $(OBJS) -lncurses -lm -l CAENVME main_acquisition.o
 
-main_acquisition.o: main_acquisition.c main_acquisition.h tdc1190_lib.h tdcV488A_lib.h adc265_lib.h adc792_lib.h v1718_lib.h vme_bridge.h V513.h scaler560_lib.h
+count: $(OBJS) simple_count.o
+	g++ -g -DLINUX -o count $(OBJS) -lncurses -lm -l CAENVME simple_count.o
+
+main_acquisition.o: main_acquisition.c
 	g++ $(COPTS) -c main_acquisition.c
+
+simple_count.o: simple_count.c
+	g++ $(COPTS) -c simple_count.c
 
 adc265_lib.o: adc265_lib.c adc265_lib.h
 	g++ $(COPTS) -c adc265_lib.c
@@ -48,6 +56,7 @@ vme_bridge.o: vme_bridge.c $(INCLUDE_DIR)/vme_bridge.h
 
 clean:
 	-rm -f acquire
+	-rm -f count
 	-rm -f #*#
 	-rm -f *~
 	-rm -f core
