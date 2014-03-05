@@ -11,9 +11,9 @@ int bridge_init(int32_t &BHandle) {
   CVBoardTypes   VMEBoard;
   short          Link, Device;
   BHandle = 0;
-  unsigned short DataShort=0;
-  //  VMEBoard = cvV1718;
-  VMEBoard = cvV2718;
+  unsigned int DataShort=0;
+  VMEBoard = cvV1718;
+  // VMEBoard = cvV2718;
   Device = 0;
   Link = 0;
   bool debug = false;

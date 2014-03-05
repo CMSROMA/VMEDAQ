@@ -4,13 +4,13 @@
 #define _DEF_ADC265_
 /*   ADC v265 header file   */
 
-#define ADC265_ADDRESS   0x30000
+#define ADC265_ADDRESS   0x100000
 #define ADC265_CHANNEL   8
 #define ADC265_AM        0x39    /* ADC265 address modifier -> A24 */
 #define ADC265_DS        0x2     /* ADC265 data size -> D16 */
 
 
-#define ADC265_DEBUG    0
+#define ADC265_DEBUG    1
 
 unsigned short init_adc265(int32_t BHandle);
 std::vector<int> read_adc265(int32_t BHandle,int status);

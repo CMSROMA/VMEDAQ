@@ -1,12 +1,14 @@
-#include <vector>
 #ifndef _V792N_HEADER_
 #define _V792N_HEADER_
 
+#include <vector>
+#include "modules_config.h"
+
 #define NUMADBOARDS	        1
-#define V792N_ADDRESS               0x00050000
+#define V792N_ADDRESS               V792_0_BA
 #define V792N_ADDRESS2              0x00040000
 #define V792N_ADDRESS3              0x00090000
-#define V792N_CHANNEL               16
+#define V792N_CHANNEL               32
 
 #define V792N_REG1_STATUS           0x100e
 #define V792N_REG2_STATUS           0x1022
@@ -33,12 +35,17 @@
 #define V792N_R_TEST_ADDRESS        0x1064
 #define V792N_SS_RESET_REG          0x1016
 
-#define adc792_debug    0
+#define adc792_debug    1
 
-unsigned short init_adc792(int32_t BHandle);
-std::vector<int> read_adc792(int32_t BHandle, int status);
-std::vector<int> readFastadc792(int32_t BHandle, int idB, int status);
-std::vector<int> readFastNadc792(int32_t BHandle, int idB, int status, int nevts, std::vector<int> &outW);
+void print_adc792_debug_word(uint32_t word);
+void check_adc792_status_afterRead(int32_t BHandle,int idB);
+int find_adc792_eventSize(std::vector<int>& events,unsigned int evtStart);
+unsigned short init_adc792(int32_t BHandle,int idB);
+unsigned short dataReset792(int32_t BHandle, int32_t address);
+unsigned short softReset792(int32_t BHandle, int32_t address);
+std::vector<int> read_adc792(int32_t BHandle, short int& status);
+std::vector<int> readFastadc792(int32_t BHandle, int idB, short int& status);
+std::vector<int> readFastNadc792(int32_t BHandle, int idB, short int& status, int nevts, std::vector<int> &outW);
 
 struct a792_shift{
   int datareg;

@@ -78,6 +78,9 @@ vector<int> read_adc265(int32_t BHandle, int status)
 /*
    Then read the ADC265 data fifo
 */
+#ifdef ADC265_DEBUG
+      printf("+++++++++++++++++++++++++++++++\n");
+#endif
       address = ADC265_ADDRESS + adc265_shift.datareg;
       for(mm=0;mm<2*ADC265_CHANNEL;mm++)
 	{
@@ -85,18 +88,20 @@ vector<int> read_adc265(int32_t BHandle, int status)
 	  caenst = CAENVME_ReadCycle(BHandle,address,poi2data,cvA24_U_DATA,cvD16);
 	  status *= (1-caenst); 
 	  adc265_range =(int) ((data & adc265_bitmask.range)>>12);
-	  //	  printf("\n mm=%d e adc265_range=%d",mm,adc265_range);
+	  //	  printf("mm=%d e adc265_range=%d\n",mm,adc265_range);
 	  if(adc265_range==0)
 	    {
 	      canale = (int) ((data & adc265_bitmask.channel)>>13);
 	      risultato = (int) (data & adc265_bitmask.convdata);
 	      ADC265_value[canale] = (int)data;
-	      //	      printf("\n canale=%d  risultato=%d\n",canale,risultato);
+#ifdef ADC265_DEBUG
+	      printf("canale=%d  risultato=%d\n",canale,risultato);
+#endif
 	    }
 	}
       for(int iC = 0; iC<8; iC++) {
-	//	printf("%d \n",ADC265_value[iC]);
 	outD.push_back(ADC265_value[iC]);
+	//	printf("IC:%d VALUE:%d \n",iC,outD[iC]);
       }
     }
   /*

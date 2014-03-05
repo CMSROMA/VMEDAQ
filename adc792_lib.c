@@ -16,7 +16,53 @@ using namespace std;
 
 std::vector<unsigned long> adcaddrs;
 
-unsigned short init_adc792(int32_t BHandle) {
+void print_adc792_debug_word(uint32_t word)
+{
+  short dt_type = word>>24 & 0x7;
+  if (dt_type==0)
+    {
+      // adc_chan = data>>17 & 0xF; //For 792N [bit 17-20]
+      short adc_chan = word>>16 & 0x1F; //For 792 [bit 16-20]
+      
+      unsigned int adc_value = word & 0xFFF; // adc data [bit 0-11]
+      bool adc_overflow = (word>>12) & 0x1; // overflow bit [bit 12]
+      bool adc_underthreshold = (word>>13) & 0x1; // under threshold bit [bit 13]
+      std::cout << "raw " << word << "\tchannel " << adc_chan << "\tvalue " << adc_value << "\toverflow " << adc_overflow << "\tunderthreshold " << adc_underthreshold << std::endl;
+    }
+}
+
+void check_adc792_status_afterRead(int32_t BHandle,int idB)
+{
+  uint32_t address =  adcaddrs.at(idB);
+  uint32_t data;
+  int status=1;
+
+  int caenst = CAENVME_ReadCycle(BHandle,address+adc792_shift.statusreg2,&data,cvA24_U_DATA,cvD16);
+  status *= (1-caenst);
+
+  if(status != 1) {
+    printf("Could not read statusreg2\n");
+  }
+  
+  bool full = data &  adc792_bitmask.full; 
+  bool empty = data &  adc792_bitmask.empty;	
+
+   if(full || !empty || status!=1 ) { 
+     std::cout << "FULL " << full << " !EMPTY " << !empty << " STATUS " << status << std::endl;
+     //Try a dataReset
+     int dtRst=dataReset792(BHandle,address);
+     if (dtRst!=1)
+       {
+	 //Now try a full software reset
+	 softReset792(BHandle,address);
+	 //Reinialize the module
+	 init_adc792(BHandle,idB);
+       }
+   }
+
+}
+
+unsigned short init_adc792(int32_t BHandle,int idB) {
 
   int status=1;
   unsigned long address;
@@ -29,114 +75,152 @@ unsigned short init_adc792(int32_t BHandle) {
   if(NUMADBOARDS >= 3) adcaddrs.push_back(V792N_ADDRESS3);
 
   //Initialize all the boards
-  for(int iBo = 0; iBo<NUMADBOARDS; iBo++) {
+  if (idB>adcaddrs.size()-1)
+    {
+      std::cout << "ADC CARD requested " << idB << " not available" << std::endl;
+      return 2;
+    }
+
+
 
     /* QDC Reset */
-    address =  adcaddrs.at(iBo) + 0x1000;
-    caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+    address =  adcaddrs.at(idB) + 0x1000;
+    caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
 
     if(status != 1) {
-      printf("Error READING %d V792N firmware -> address=%lx \n",iBo,address);
+      printf("Error READING %d V792N firmware -> address=%lx \n",idB,address);
       return status;
     }
     else {
-      if(adc792_debug) printf("V792N %d firmware is version:  %lx \n",iBo,DataLong);
+      if(adc792_debug) printf("V792N %d firmware is version:  %lx \n",idB,DataLong);
     }
 
     //Bit set register
-    address = adcaddrs.at(iBo) + 0x1006;
+    address = adcaddrs.at(idB) + 0x1006;
     DataLong = 0x80; //Issue a software reset. To be cleared with bit clear register access
-    caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+    caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
 
-    caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+    caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
     if(status != 1) {
       printf("Bit Set Register read: %li\n", DataLong);
+      return status;
     }
     
     //Control Register: enable BLK_end
-    address = adcaddrs.at(iBo) + 0x1010;
+    address = adcaddrs.at(idB) + 0x1010;
     DataLong = 0x4; //Sets bit 2 to 1 [enable blkend]
 
-    caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+    caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
-    caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+    caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
     if(status != 1) {
       printf("Bit Set Register read: %li\n", DataLong);
+      return status;
     }
     
     //Bit clear register
-    address = adcaddrs.at(iBo) + 0x1008;
+    address = adcaddrs.at(idB) + 0x1008;
     DataLong = 0x80; //Release the software reset. 
-    caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+    caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
-    caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+    caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
     if(status != 1) {
       printf("Bit Clear Register read: %li\n", DataLong);
+      return status;
     }
     
     //Bit set register 2
     //Enable/disable zero suppression
     if(nZS) {
-      address = adcaddrs.at(iBo) + 0x1032;
-      DataLong = 0x18; //Disable Zero Suppression + disable overfl
-      caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+      address = adcaddrs.at(idB) + 0x1032;
+      DataLong = 0x1018; //Disable Zero Suppression + disable overfl
+      caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
       status *= (1-caenst); 
       if(status != 1) {
 	printf("Could not disable ZS: %li\n", DataLong);
+	return status;
       }
     } else {
-      address = adcaddrs.at(iBo) + 0x1032;
-      DataLong = 0x88; //Enable Zero Suppression + disable overfl
-      caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+      address = adcaddrs.at(idB) + 0x1032;
+      DataLong = 0x1008; //Enable Zero Suppression + disable overfl
+      caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
       status *= (1-caenst); 
       if(status != 1) {
-	printf("Could not disable ZS: %li\n", DataLong);
+	printf("Could not enable ZS: %li\n", DataLong);
+	return status;
       }
     }
     
     //Set the thresholds.
-    for(int i=0; i<16; i++) {
-      address = adcaddrs.at(iBo) + 0x1080 +4*i;
-      if(adc792_debug) printf("Add : %lx\n",address);
-      DataLong = 0x12; //Threshold
-      caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+    for(int i=0; i< V792N_CHANNEL; i++) {
+      //      address = adcaddrs.at(idB) + 0x1080 +4*i; //every 4 for V792N
+      address = adcaddrs.at(idB) + 0x1080 +2*i; //every 2 for V792
+      if(adc792_debug) printf("Channel %d Address : %lx\n",i,address);
+      DataLong = 0x0; //Threshold
+      caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
       status *= (1-caenst); 
       if(adc792_debug) printf("Iped register read: %li\n", DataLong);
       if(status != 1) {
 	printf("Threshold register read: %li\n", DataLong);
+	return status;
       }
     }
     
     //Set the Iped value to XX value [180, defaults; >60 for coupled channels]
-    address = adcaddrs.at(iBo) + 0x1060;
+    address = adcaddrs.at(idB) + 0x1060;
     //  status = vme_read_dt(address, &DataLong, AD32, D16);
-    caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+    caenst = CAENVME_ReadCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
     //    if(adc792_debug) printf("Iped register read: %li\n", DataLong);
-    DataLong = 0xFF; //iped value
-    caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA32_U_DATA,cvD16);
+    // DataLong = 0xFF; //iped value
+    DataLong = 0x60; //iped value
+    caenst = CAENVME_WriteCycle(BHandle,address,&DataLong,cvA24_U_DATA,cvD16);
     status *= (1-caenst); 
     printf("Iped register read: %li\n", DataLong);
     
     
      if(status != 1) {
       printf("Iped register read: %li\n", DataLong);
+      return status;
     }
-  }//End of multiple boards loop
+
   return status;
- }
+}
 
 
+unsigned short dataReset792(int32_t BHandle, int32_t address)
+{
+  unsigned short status = 1;
+  unsigned short caenst;
+  unsigned int rst=0x4;
+  caenst = CAENVME_WriteCycle(BHandle,address+V792N_BIT_SET2,&rst,cvA24_U_DATA,cvD16);
+  status *= (1-caenst); 
+  caenst = CAENVME_WriteCycle(BHandle,address+V792N_BIT_CLEAR2,&rst,cvA24_U_DATA,cvD16);
+  status *= (1-caenst); 
+  return status;
+}
 
+
+unsigned short softReset792(int32_t BHandle, int32_t address)
+{
+  unsigned short status = 1;
+  unsigned short caenst;
+  unsigned int rst=0x80;
+  caenst = CAENVME_WriteCycle(BHandle,address+V792N_BIT_SET1,&rst,cvA24_U_DATA,cvD16);
+  status *= (1-caenst); 
+  caenst = CAENVME_WriteCycle(BHandle,address+V792N_BIT_CLEAR1,&rst,cvA24_U_DATA,cvD16);
+  status *= (1-caenst); 
+  return status;
+}
 
 /*------------------------------------------------------------------*/
 
-vector<int> read_adc792(int32_t BHandle, int status)
+vector<int> read_adc792(int32_t BHandle, short int& status)
 {
   /*
     reading of the V792N 
@@ -146,27 +230,38 @@ vector<int> read_adc792(int32_t BHandle, int status)
   vector<int> outD;
   int caenst;
   unsigned long address, data, dt_type;
-  unsigned long adc792_rdy, adc792_busy, evtnum;
+  unsigned long evtnum;
   unsigned long full,empty, evc_lsb, evc_msb, adc_value, adc_chan;
   unsigned int ncha;
+  bool adc_underthreshold,adc_overflow, adc792_rdy, adc792_busy;
   status = 1; 
 
-  /*
-    check if the fifo has something inside: use status register 1
-   */  
+  adc792_rdy = 0;
+  adc792_busy = 0;
+
+  /* /\* while (!adc792_rdy || adc792_busy) *\/ */
+  /* /\*   { *\/ */
+  /*     /\* */
+
+  //check if the fifo has something inside: use status register 1 
+
   address = V792N_ADDRESS + adc792_shift.statusreg1;
   //status *= vme_read_dt(address,&data,AD32,D16);
-  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD16);
-  status = (1-caenst); 
-
-  if(adc792_debug) printf("ST (str1) :: %i, %lx, %lx \n",status,address,data);
+  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
+  status = (1-caenst);
+  
   adc792_rdy = data & adc792_bitmask.rdy;
-  adc792_busy = data & adc792_bitmask.busy;
+  adc792_busy = (data>>2) & adc792_bitmask.rdy;
+  
+  std::cout << adc792_rdy << "," << adc792_busy << std::endl; 
+  /*     //      usleep(1); */
+  //if(adc792_debug) printf("ST (str1) :: %i, %lx, %lx \n",status,address,data&FF); */
+  /*   } */
 
   //Trigger status
   address = V792N_ADDRESS + 0x1020;
   //status *= vme_read_dt(address,&data,AD32,D16);
-  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD16);
+  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
   status *= (1-caenst); 
   if(adc792_debug) printf("ST (trg1) :: %i, %lx, %lx \n",status,address,data);
 
@@ -174,12 +269,12 @@ vector<int> read_adc792(int32_t BHandle, int status)
   //Event counter register
   address = V792N_ADDRESS + 0x1024;
   //  status *= vme_read_dt(address,&data,AD32,D16);
-  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD16);
+  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
   status *= (1-caenst); 
   evc_lsb = data;
   address = V792N_ADDRESS + 0x1026;
   // status *= vme_read_dt(address,&data,AD32,D16);
-  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD16);
+  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
   status *= (1-caenst); 
   evc_msb = data & 0xFF;
   
@@ -191,43 +286,57 @@ vector<int> read_adc792(int32_t BHandle, int status)
     //Read the Event Header
     address = V792N_ADDRESS;
     //status = vme_read_dt(address,&data,AD32,D32);
-    caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD32);
-    status *= (1-caenst); 
-    if(adc792_debug) printf("Data Header :: %i, %lx, %lx \n",status,address,data);
+    caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD32);
+    status *= (1-caenst);
+
+    if ( ! (data>>24) & 0x2 )
+      {
+	std::cout << "ADC792 ERROR: NOT BEGIN OF EVENT" << std::endl;
+	return outD;
+      }
+
+    //    if(adc792_debug) printf("Data Header :: %i, %lx, %lx \n",status,address,data);
     ncha =  data>>8 & 0x3F;
-    if(adc792_debug) cout<<"Going to Read "<<ncha<<" channels!"<<endl;
+    if(adc792_debug) cout<<"BOE:Read "<<ncha<<" channels!"<<endl;
     full = 0; empty = 0;
     while(!full && !empty) {
-
       //Read MEB for each channel and get the ADC value
       address = V792N_ADDRESS;
       //status = vme_read_dt(address,&data,AD32,D32);
-      caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD32);
+      caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD32);
       status *= (1-caenst); 
-      if(adc792_debug) printf("Reading and got:: %i %lx %lx\n", status, data, address);
-
+      //      if(adc792_debug) printf("Reading and got:: %i %lx %lx\n", status, data, address);
       dt_type = data>>24 & 0x7;
-      if(adc792_debug) printf("typ:: %lx\n", dt_type);
+      //if(adc792_debug) printf("typ:: %lx\n", dt_type);
 
       if(!(dt_type & 0x7)) {
-	adc_value = data & 0xFFF;
-	adc_chan = data>>17 & 0xF;
-	if(adc792_debug) cout<<adc_value<<" "<<adc_chan<<" "<<endl;
+	// adc_chan = data>>17 & 0xF; //For 792N [bit 17-20]
+	adc_chan = data>>16 & 0x1F; //For 792 [bit 16-20]
+
+	adc_value = data & 0xFFF; // adc data [bit 0-11]
+	adc_overflow = (data>>12) & 0x1; // overflow bit [bit 12]
+	adc_underthreshold = (data>>13) & 0x1; // under threshold bit [bit 13]
+
+	if(adc792_debug) cout<< "ADC data :\tch " << adc_chan<<"\tadc "<< adc_value<<"\tut "<< adc_underthreshold << "\tof " << adc_overflow << endl;
 	adc_val[adc_chan] = adc_value;
-	if(data>>12 & 0x1) cout<<" Overflow, my dear !! "<<adc_value<<endl;
       } else if(dt_type & 0x4) {
 	//EOB
 	evtnum = data & 0xFFFFFF;
-	if(adc792_debug) cout<<"EvtNum "<<evtnum<<endl;
+	if(adc792_debug) cout<<"EOE: EvtNum "<<evtnum<<endl;
       } else if(dt_type & 0x2) {
-	//Header
-	if(adc792_debug) cout<<" ERROR:: THIS SHOULD NOT HAPPEN!!!"<<endl;
+	//Header 1?
+	if(adc792_debug) cout<<"ADC792 ERROR:: THIS SHOULD NOT HAPPEN!!!"<<endl;
+	return outD;
+      } else if(dt_type == 0) {
+	//Header 0?
+	if(adc792_debug) cout<<"ADC792 ERROR:: EVENT EMPTY!!"<<endl;
+	return outD;
       }
 
       //Check the status register to check the MEB status
       address = V792N_ADDRESS + adc792_shift.statusreg2;
       //status = vme_read_dt(address,&data,AD32,D16);
-      caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD16);
+      caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
       status *= (1-caenst); 
   
       full = data &  adc792_bitmask.full;
@@ -246,7 +355,7 @@ vector<int> read_adc792(int32_t BHandle, int status)
   return outD;
 }
 
-vector<int> readFastadc792(int32_t BHandle, int idB, int status)
+vector<int> readFastadc792(int32_t BHandle, int idB, short int& status)
 {
   /*
     Implements Block Transfer Readout of V792N 
@@ -257,7 +366,7 @@ vector<int> readFastadc792(int32_t BHandle, int idB, int status)
   status = 1; 
   int caenst;
   unsigned long data,address;
-  unsigned long dataV[34]; int wr;
+  unsigned int dataV[33]; int wr;
   unsigned long adc792_rdy, adc792_busy;
   unsigned int ncha, idV;
   struct timeval tv;
@@ -279,8 +388,13 @@ vector<int> readFastadc792(int32_t BHandle, int idB, int status)
 
   address = adcaddrs.at(idB) + adc792_shift.statusreg1;
   //status *= vme_read_dt(address,&data,AD32,D16);
-  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD16);
+  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
   status *= (1-caenst); 
+  if(status != 1) {
+    printf("Could not read statusreg1\n");
+    return outD;
+  }
+
   if(adc792_debug) printf("ST (str1) :: %i, %lx, %lx \n",status,address,data);
   adc792_rdy = data & adc792_bitmask.rdy;
   adc792_busy = data & adc792_bitmask.busy;
@@ -299,8 +413,13 @@ vector<int> readFastadc792(int32_t BHandle, int idB, int status)
     //Read the Event Header
     address = adcaddrs.at(idB);
     //status = vme_read_dt(address,&data,AD32,D32);
-    caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD32);
+    caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD32);
     status *= (1-caenst); 
+    if(status != 1) {
+      printf("Could not read event header\n");
+      return outD;
+    }
+
     //I put the header in
     outD.push_back((int)data);
 
@@ -309,22 +428,30 @@ vector<int> readFastadc792(int32_t BHandle, int idB, int status)
     if(adc792_debug) cout<<"Going to Read "<<ncha<<" channels!"<<endl;
 
     //Vector reset
-    idV = 0; while(idV<34) { dataV[idV] = 0; idV++; }
-    wr = (ncha+1)*4;
+    idV = 0; while(idV<ncha+1) { dataV[idV] = 0; idV++; }
+    wr = sizeof(dataV);
     //    printf("numchann %d \n",ncha);
 
     //status *= vme_read_blk(address,dataV,wr,AD32,D32);    
     caenst = CAENVME_BLTReadCycle(BHandle,address,dataV,wr,
-				  cvA32_U_DATA,cvD32,&nbytes_tran);
+				  cvA24_U_DATA,cvD32,&nbytes_tran);
+    std::cout << "nBytes transferred " << nbytes_tran << " " << sizeof(dataV) << std::endl;
     status *= (1-caenst); 
-
+    if(status != 1) {
+      printf("Could not read BLT\n");
+      return outD;
+    }
     //Vector dump into output
     idV = 0; while(idV<ncha+1) { 
-      outD.push_back((int)dataV[idV]); 
-      //      cout<<" "<<(int)dataV[idV]<<" "<<idV<<endl; 
+      outD.push_back((int)dataV[idV]);
+      if (adc792_debug) print_adc792_debug_word(dataV[idV]);
       idV++;  }
   }
 
+
+  check_adc792_status_afterRead(BHandle,idB);
+  /* } */
+  
   if(adc792_debug) {
     gettimeofday(&tv, NULL); 
     curt2=tv.tv_usec;
@@ -335,22 +462,23 @@ vector<int> readFastadc792(int32_t BHandle, int idB, int status)
   return outD;
 }
 
-vector<int> readFastNadc792(int32_t BHandle, int idB, int status, int nevts, vector<int> &outW)
+vector<int> readFastNadc792(int32_t BHandle, int idB, short int& status, int nevts, vector<int> &outW)
 {
   /*
     Implements Block Transfer Readout of V792N 
     returns vector with output
   */
+
   int nbytes_tran = 0;
   vector<int> outD; outD.clear();
   status = 1; 
   int caenst;
   unsigned long data,address;
   //AS  unsigned long dataV[34];
-  unsigned long dataV[18*nevts];
-  int wr;
+  unsigned int dataV[34*nevts]; //each event is composed of 34x32bit words
+  unsigned int wr;
   unsigned long adc792_rdy, adc792_busy;
-  unsigned int ncha(16), idV;
+  unsigned int ncha(32), idV; //no ZS reading all 32 channels
 
   if(idB<0 || idB>NUMADBOARDS-1) {
     cout<<" Accssing Board number"<<idB<<" while only "<<NUMADBOARDS<<" are initialized!!! Check your configuration!"<<endl;
@@ -362,22 +490,22 @@ vector<int> readFastNadc792(int32_t BHandle, int idB, int status, int nevts, vec
     check if the fifo has something inside: use status register 1
   */  
   address = adcaddrs.at(idB) + adc792_shift.statusreg1;
-  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD16);
+  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
   status *= (1-caenst); 
 
-  if(adc792_debug) printf("ST (str1) :: %i, %lx, %lx \n",status,address,data);
+  /* if(adc792_debug) printf("ST (str1) :: %i, %lx, %lx \n",status,address,data); */
   adc792_rdy = data & adc792_bitmask.rdy;
   adc792_busy = data & adc792_bitmask.busy;
   int tmpW;
   unsigned long full,empty;
 
-  //Check the status register to check the MEB status
-  address = adcaddrs.at(idB) + adc792_shift.statusreg2;
-  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD16);
-  status *= (1-caenst); 
+  /* //Check the status register to check the MEB status */
+  /* address = adcaddrs.at(idB) + adc792_shift.statusreg2; */
+  /* caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16); */
+  /* status *= (1-caenst);  */
 
-  full = data &  adc792_bitmask.full;
-  empty = data &  adc792_bitmask.empty;
+  /* full = data &  adc792_bitmask.full; */
+  /* empty = data &  adc792_bitmask.empty; */
 
   //Event counter register
   if(adc792_debug)  cout<<" rdy:: "<<adc792_rdy<<" busy:: "<<adc792_busy<<endl;
@@ -394,42 +522,39 @@ vector<int> readFastNadc792(int32_t BHandle, int idB, int status, int nevts, vec
     //Vector reset
     idV = 0; while(idV<(ncha+2)*nevts) { dataV[idV] = 0; idV++; }
     wr = (ncha+2)*4*nevts; 
+    //    wr = sizeof(dataV);
 
     caenst = CAENVME_BLTReadCycle(BHandle,address,dataV,wr,
-				  cvA32_U_DATA,cvD32,&nbytes_tran);
-    status *= (1-caenst); 
-
-    //Check the status register to check the MEB status
-    address = adcaddrs.at(idB) + adc792_shift.statusreg2;
-    caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD16);
+				  cvA24_U_DATA,cvD32,&nbytes_tran);
     status *= (1-caenst); 
 
     //Vector dump into output
     idV = 0; while(idV<(ncha+2)*nevts) { 
       outD.push_back((int)dataV[idV]); 
+      //   if (adc792_debug) print_adc792_debug_word(dataV[idV]);
       idV++;  
     }
 
-    full = data &  adc792_bitmask.full;
-    empty = data &  adc792_bitmask.empty;
 
+    /*
     int ntry = 100, nt = 0;
     while(!empty && nt<ntry) {
       //Check the status register to check the MEB status
       address = adcaddrs.at(idB);
       caenst = CAENVME_BLTReadCycle(BHandle,address,dataV,(ncha+2)*4,
-				    cvA32_U_DATA,cvD32,&nbytes_tran);
+				    cvA24_U_DATA,cvD32,&nbytes_tran);
       status *= (1-caenst); 
 
       //Vector dump into output
       idV = 0; while(idV<(ncha+2)) { 
 	outD.push_back((int)dataV[idV]); 
+	if (adc792_debug) print_adc792_debug_word(dataV[idV]);
 	idV++;  
       }
 
       //Check the status register to check the MEB status
       address = adcaddrs.at(idB) + adc792_shift.statusreg2;
-      caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA32_U_DATA,cvD16);
+      caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
       status *= (1-caenst); 
       
       full = data &  adc792_bitmask.full;
@@ -437,10 +562,37 @@ vector<int> readFastNadc792(int32_t BHandle, int idB, int status, int nevts, vec
       nt++;
     }
     if(nt) cout<<" Warning:: needed "<<nt<<" add read to clean up MEB"<<endl;
+    */
 
-    outW.push_back(18);
+    check_adc792_status_afterRead(BHandle,idB);
   }
 
   return outD;
 }
 
+int find_adc792_eventSize(std::vector<int>& events,unsigned int evtStart)
+{
+  short dt_type_boe = events.at(evtStart)>>24 & 0x7;
+  if (dt_type_boe != 2)
+    {
+      std::cout << "ADC 792:: NOT AT BEGIN OF EVENT. Data are probably corrupted" << std::endl;
+      return -1;
+    }
+
+  int channelsReadout =  events.at(evtStart)>>8 & 0x3F;  
+
+  short dt_type_eoe = events.at(evtStart+channelsReadout+1)>>24 & 0x7;
+  if (dt_type_eoe != 4)
+    {
+      std::cout << "ADC 792:: NOT AT END OF EVENT. Data are probably corrupted" << std::endl;
+      return -1;
+    }
+  
+  if (adc792_debug)
+    {
+      int evtNum=events.at(evtStart+channelsReadout+1) & 0xFFFFFF;
+      std::cout << "ADC 792:: EVENT " << evtNum << " has " << channelsReadout << " channels readout"<< std::endl; 
+    }
+
+  return channelsReadout+2;
+}

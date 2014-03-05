@@ -31,9 +31,9 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-  unsigned long  max_evts=100000;
+  unsigned long  max_evts=9000;
   int nevent = 0;
-  short trigger_OK, daq_status, status_init;
+  short daq_status, status_init;
   int i; 
   double rate;
   int32_t BHandle(0);
@@ -92,9 +92,11 @@ int main(int argc, char** argv)
     {
       printf("\n Bridge initialization and trigger vetoed\n");
       status_init *= init_1718(BHandle);
-      status_init *= init_scaler_1718(BHandle) ;
       status_init *= init_pulser_1718(BHandle) ;
-      status_init *= clearbusy_1718(BHandle);
+      status_init *= set_configuration_1718(BHandle);
+      status_init *= print_configuration_1718(BHandle);
+      status_init *= init_scaler_1718(BHandle) ;
+      /* status_init *= setbusy_1718(BHandle,DAQ_BUSY_ON); */
       if (status_init != 1) { return(1); }
       
     } 
@@ -163,7 +165,7 @@ int main(int argc, char** argv)
   /* ADC 792 initialization */
   if(ADC792) {
     printf("\n Initialization of ADC 792\n");
-    status_init *= init_adc792(BHandle);
+    status_init *= init_adc792(BHandle,0); //Initialize the first card
     if (status_init != 1) 
       {
 	printf("Error in ADC 792 initialization... STOP!\n");
@@ -173,27 +175,6 @@ int main(int argc, char** argv)
 
   printf("\n VME and modules initialization completed \n\n Start data acquisition\n");
   
-  /*  START of data acquisition */ 
-  if (V1718 && !IO513) {
-    status_init *= clearbusy_1718(BHandle);
-    if (status_init != 1) 
-      { 
-	printf("\n Trigger enable(v1718)  problems.. STOP!\n");
-	return(1); 
-      }
-  } else if (V1718 && IO513) {
-
-    status_init *= busy_V513(BHandle, DAQ_BUSY_OFF);
-    if (status_init != 1) 
-      { 
-	printf("\n Problem in V513 trigger enable\n");
-	return(1); 
-      }
-     /*
-       start of the event collection cycle
-     */
-    daq_status = reset_daq(BHandle);
-  }
 
   /* Output file initialization  */
   int start, end;
@@ -217,7 +198,7 @@ int main(int argc, char** argv)
   vector<int> my_adc792_OD, my_adc792_WD;
   vector<int> my_adc792_2_OD, my_adc792_2_WD;
   vector<int> my_adc792_3_OD, my_adc792_3_WD;
-  vector<int> my_scal_OD, my_scal_WD, tmpscaD;
+  vector<uint32_t> my_scal_OD, my_scal_WD, tmpscaD;
   vector<int> my_header_OD;
 
   myOut.open(f_value,ios::out);
@@ -232,36 +213,67 @@ int main(int argc, char** argv)
   time_start = tempo_start;
   time_last = tempo_start;
   
-  int in_evt_read = 10; bool read_boards;
-  int hm_evt_read; bool hiScale = true;
+  int in_evt_read = 10; 
+  bool read_boards,read_scaler;
+  int hm_evt_read; 
+  bool hiScale = true;
 
   //Clear of header info
   my_header_OD.clear();
 
+  status_init *= reset_nim_scaler_1718(BHandle) ;
+
+  int nreadout=0;
+
   /* Start of the event collection cycle */
+
   while(nevent<(int)max_evts)
     {
       board_num = 0;
-      trigger_OK = 0;
       daq_status = 1;
       hm_evt_read = in_evt_read;
       //      hm_evt_read = 1;
       hiScale = true;
       trigger = false;
-      if(nevent<10) {hm_evt_read = 1; hiScale = false;}
+
+      //nasty... 
+      if(nevent<in_evt_read) {hm_evt_read = 1; hiScale = false;}
+
+      /*  START of data acquisition */ 
+      if (V1718 && !IO513) {
+	daq_status *= read_scaler_1718(BHandle); //reset scaler
+	daq_status *= setbusy_1718(BHandle,DAQ_BUSY_OFF); //busy off to latch the busy bit
+	if (daq_status != 1) 
+	  { 
+	    printf("\n Trigger enable(v1718)  problems.. STOP!\n");
+	    return(1); 
+	  }
+      } else if (V1718 && IO513) {
+	daq_status *= clear_strobe_V513(BHandle); 
+	daq_status *= reset_daq(BHandle);
+	daq_status *= busy_V513(BHandle, DAQ_BUSY_OFF);
+	if (daq_status != 1) 
+	  { 
+	    printf("\n Problem in V513 trigger enable\n");
+	    return(1); 
+	  }
+      }
 
       /* Wait for the trigger signal from the IO */
       if (V1718 && !IO513) {
 	while(!trigger)
 	  {
-	    
-	    //	    daq_status = read_trig_1718(BHandle,&trigger); 
-	    daq_status = trigger_scaler_1718(BHandle,&trigger);    
+	    daq_status = trigger_scaler_1718(BHandle,&trigger);
 	  }
-	if(daq_status!=1){
-	  printf("\nError while on polling... STOP!\n");
+	if(daq_status==999){
+	  printf("Consider setting a reset...\n");
+	}
+	else if(daq_status!=1){
+	  printf("\nError %d while on polling... STOP!\n",daq_status);
 	  return(1);
 	}
+	daq_status *= setbusy_1718(BHandle,DAQ_TRIG_ACK); //acknowledge of the trigger to latch the trigger bit
+
       } else if (V1718 && IO513) {
 	while(!trigger)
 	  {
@@ -287,6 +299,7 @@ int main(int argc, char** argv)
       headWords = my_header_OD.size();
 
       read_boards = false;
+      read_scaler = false;
       nevent++;
 
       if(!(nevent%hm_evt_read)) {
@@ -295,6 +308,7 @@ int main(int argc, char** argv)
       }
 
       if(read_boards) {
+	nreadout++;
 	/* read the TDC 1190 */
 	if(TDC1190) {
 	  my_tdc_OD.clear();
@@ -347,6 +361,7 @@ int main(int argc, char** argv)
 	/* read the ADC 265*/
 	if(ADC265) {
 	  my_adc_OD.clear();
+	  //here we should improve the readomg pf n_events in a single event
 	  my_adc_OD = read_adc265(BHandle,daq_status); 
 	  
 	  if (daq_status != 1) 
@@ -357,12 +372,13 @@ int main(int argc, char** argv)
 	  board_num += 8;
 	  adcWords = my_adc_OD.size();
 	}
-	
+
 	/* read the ADC 792*/
 	if(ADC792) {
 	  my_adc792_OD.clear();
 	  my_adc792_WD.clear();
-	  //	my_adc792_OD = read_adc792(daq_status); 
+	  //my_adc792_OD = read_adc792(BHandle,daq_status); 
+	  //	  my_adc792_OD = readFastadc792(BHandle,0,daq_status); 
 	  my_adc792_OD = readFastNadc792(BHandle,0,daq_status,hm_evt_read,my_adc792_WD); 
 	  //	  if(!my_adc792_OD.size())  cout<<" Warning:: QDC0 Read :: "<< my_adc792_OD.size()<<" "<< my_adc792_WD.size()<<endl;
 	  if (daq_status != 1) 
@@ -372,6 +388,7 @@ int main(int argc, char** argv)
 	    }
 	  board_num += 16;
 	  adc792Words = my_adc792_OD.size();
+	  if (d_value) std::cout << "ADC 792:: WORDS " << adc792Words << std::endl;
 	}
 
 	/* read the ADC 792 n.2*/
@@ -387,6 +404,7 @@ int main(int argc, char** argv)
 	    }
 	  board_num += 32;
 	  adc792Words_2 = my_adc792_2_OD.size();
+	  if (d_value) std::cout << "ADC 792 n.2:: WORDS " << adc792Words_2 << std::endl;
 	}
 
 	/* read the ADC 792 n.3*/
@@ -402,6 +420,7 @@ int main(int argc, char** argv)
 	    }
 	  board_num += 64;
 	  adc792Words_3 = my_adc792_3_OD.size();
+	  if (d_value) std::cout << "ADC 792 n.3:: WORDS " << adc792Words_3 << std::endl;
 	}
 
 	/* read the SCALER 560 EACH event*/
@@ -413,19 +432,27 @@ int main(int argc, char** argv)
 
 	  //Needed only if you read each event. In this implementation the 
 	  //tmp Vector is no longer needed.
-	  my_scal_WD.push_back(V560_CHANNEL);
-	  tmpscaD.clear();
-	  tmpscaD = read_scaler560Vec(BHandle,daq_status); 
-	  my_scal_OD.insert( my_scal_OD.end(), tmpscaD.begin(), tmpscaD.end() );
 
-	  board_num += 128;
-	  scalWords = my_scal_OD.size();
-	  //	  cout<<my_scal_OD.at(0)<<" "<<my_scal_OD.at(1)<<" "<<my_scal_OD.at(2)<<" "<<my_scal_OD.at(3)<<" "<<my_scal_OD.at(4)<<endl;
-	  if(!my_scal_OD.size())  cout<<" Warning:: Scaler Read :: "<< my_scal_OD.size()<<" "<< my_scal_WD.size()<<endl;
-	  if (daq_status != 1) 
+	  //read the SCALER 1 in 100 times
+	  if (nreadout%100==0)
+	      read_scaler=true;
+
+	  if (read_scaler)
 	    {
-	      printf("\nError reading SCALER 560... STOP!\n");
-	      return(1);
+	      my_scal_WD.push_back(V560_CHANNEL);
+	      tmpscaD.clear();
+	      tmpscaD = read_scaler560Vec(BHandle,daq_status); 
+	      my_scal_OD.insert( my_scal_OD.end(), tmpscaD.begin(), tmpscaD.end() );
+	      
+	      board_num += 128;
+	      scalWords = my_scal_OD.size();
+	      //	  cout<<my_scal_OD.at(0)<<" "<<my_scal_OD.at(1)<<" "<<my_scal_OD.at(2)<<" "<<my_scal_OD.at(3)<<" "<<my_scal_OD.at(4)<<endl;
+	      if(!my_scal_OD.size())  cout<<" Warning:: Scaler Read :: "<< my_scal_OD.size()<<" "<< my_scal_WD.size()<<endl;
+	      if (daq_status != 1) 
+		{
+		  printf("\nError reading SCALER 560... STOP!\n");
+		  return(1);
+		}
 	    }
 	}
 
@@ -433,6 +460,7 @@ int main(int argc, char** argv)
 	board_num += 256;
 
 	start = 0;
+
 	start_adc792 = 0;
 	start_adc792_2 = 0;
 	start_adc792_3 = 0;
@@ -440,225 +468,229 @@ int main(int argc, char** argv)
 	start_v488 = 0;
 	start_v560 = 0;
 	start_hea = 0;
-	if(hm_evt_read == 1) {	
 
+	/* if(hm_evt_read == 1) {	 */
+
+	/*   myOE.clear(); */
+
+	/*   //Write the event in unformatted style */
+	/*   myOE.push_back(nevent); */
+	  
+	/*   //What boards? */
+	/*   myOE.push_back(board_num); */
+	  
+	/*   if(TDC1190) myOE.push_back(tdcWords); */
+	/*   if(TDC1190_2) myOE.push_back(tdc2Words); */
+	/*   if(TDC488A) { */
+	/*     myOE.push_back(v488Words); */
+	/*   } */
+	/*   if(ADC265) myOE.push_back(adcWords); */
+	/*   if(ADC792) myOE.push_back(adc792Words); */
+	/*   if(ADC792_2) myOE.push_back(adc792Words_2); */
+	/*   if(ADC792_3) myOE.push_back(adc792Words_3); */
+	/*   if(SCALER560) myOE.push_back(scalWords); */
+
+	/*   myOE.push_back(headWords); */
+
+	/*   if(TDC1190) myOE.insert( myOE.end(), my_tdc_OD.begin(), my_tdc_OD.end() ); */
+	/*   if(TDC1190_2) myOE.insert( myOE.end(), my_tdc2_OD.begin(), my_tdc2_OD.end() ); */
+	/*   if(TDC488A) myOE.insert( myOE.end(), my_v488_OD.begin(), my_v488_OD.end() ); */
+	/*   if(ADC265) myOE.insert( myOE.end(), my_adc_OD.begin(), my_adc_OD.end() ); */
+	/*   if(ADC792) myOE.insert( myOE.end(), my_adc792_OD.begin(), my_adc792_OD.end() ); */
+	/*   if(ADC792_2) myOE.insert( myOE.end(), my_adc792_2_OD.begin(), my_adc792_2_OD.end() ); */
+	/*   if(ADC792_3) myOE.insert( myOE.end(), my_adc792_3_OD.begin(), my_adc792_3_OD.end() ); */
+	/*   if(SCALER560) myOE.insert( myOE.end(), my_scal_OD.begin(), my_scal_OD.end() ); */
+
+	/*   myOE.insert( myOE.end(), my_header_OD.begin(), my_header_OD.end() ); */
+
+	/*   //Clears the HEADER after writing the EVENT */
+	/*   my_header_OD.clear(); */
+	  
+	/*   daq_status *= writeFastEvent(myOE,&myOut); */
+
+	/* } else { */
+
+	for(int ie=0; ie<hm_evt_read; ie++) {
 	  myOE.clear();
-
+	  
 	  //Write the event in unformatted style
-	  myOE.push_back(nevent);
-
+	  myOE.push_back(nevent-hm_evt_read+ie+1);
+	  
 	  //What boards?
 	  myOE.push_back(board_num);
 	  
-	  if(TDC1190) myOE.push_back(tdcWords);
-	  if(TDC1190_2) myOE.push_back(tdc2Words);
-	  if(TDC488A) {
-	    myOE.push_back(v488Words);
+	  if(TDC1190) {
+	    if(ie<(int)my_tdc_WD.size()) {
+	      myOE.push_back(my_tdc_WD.at(ie));	    
+	    }
 	  }
-	  if(ADC265) myOE.push_back(adcWords);
-	  if(ADC792) myOE.push_back(adc792Words);
-	  if(ADC792_2) myOE.push_back(adc792Words_2);
-	  if(ADC792_3) myOE.push_back(adc792Words_3);
-	  if(SCALER560) myOE.push_back(scalWords);
-
-	  myOE.push_back(headWords);
-
-	  if(TDC1190) myOE.insert( myOE.end(), my_tdc_OD.begin(), my_tdc_OD.end() );
-	  if(TDC1190_2) myOE.insert( myOE.end(), my_tdc2_OD.begin(), my_tdc2_OD.end() );
-	  if(TDC488A) myOE.insert( myOE.end(), my_v488_OD.begin(), my_v488_OD.end() );
-	  if(ADC265) myOE.insert( myOE.end(), my_adc_OD.begin(), my_adc_OD.end() );
-	  if(ADC792) myOE.insert( myOE.end(), my_adc792_OD.begin(), my_adc792_OD.end() );
-	  if(ADC792_2) myOE.insert( myOE.end(), my_adc792_2_OD.begin(), my_adc792_2_OD.end() );
-	  if(ADC792_3) myOE.insert( myOE.end(), my_adc792_3_OD.begin(), my_adc792_3_OD.end() );
-	  if(SCALER560) myOE.insert( myOE.end(), my_scal_OD.begin(), my_scal_OD.end() );
-
-	  myOE.insert( myOE.end(), my_header_OD.begin(), my_header_OD.end() );
-
-	  //Clears the HEADER after writing the EVENT
-	  my_header_OD.clear();
 	  
-	  daq_status *= writeFastEvent(myOE,&myOut);
-
-	} else {
-	  for(int ie=0; ie<hm_evt_read; ie++) {
-	    myOE.clear();
-	    
-	    //Write the event in unformatted style
-	    myOE.push_back(nevent-hm_evt_read+ie+1);
-
-	    //What boards?
-	    myOE.push_back(board_num);
-	    
-	    if(TDC1190) {
-	      if(ie<(int)my_tdc_WD.size()) {
-		myOE.push_back(my_tdc_WD.at(ie));	    
-	      }
+	  if(TDC1190_2) {
+	    if(ie<(int)my_tdc2_WD.size()) {
+	      myOE.push_back(my_tdc2_WD.at(ie));	    
 	    }
-	    
-	    if(TDC1190_2) {
-	      if(ie<(int)my_tdc2_WD.size()) {
-		myOE.push_back(my_tdc2_WD.at(ie));	    
-	      }
+	  }
+	  
+	  if(TDC488A)  {
+	    if(ie<(int)my_v488_WD.size()) {
+	      myOE.push_back(my_v488_WD.at(ie));	    
+	    } else {
+	      cout<<"nWords:: We are missing an event!!! "<<ie<<" "<<my_v488_WD.size()<<endl;
+	      myOE.push_back(1);
 	    }
-	    
-	    if(TDC488A)  {
-	      if(ie<(int)my_v488_WD.size()) {
-		myOE.push_back(my_v488_WD.at(ie));	    
-	      } else {
-		cout<<"nWords:: We are missing an event!!! "<<ie<<" "<<my_v488_WD.size()<<endl;
-		myOE.push_back(1);
-	      }
+	  }
+	  
+	  //	    if(ADC265) myOE.push_back(adcWords);
+
+	  int eventSize_adc792=0;
+	  int eventSize_adc792_2=0;
+	  int eventSize_adc792_3=0;
+
+	  if(ADC792) {
+	    eventSize_adc792=find_adc792_eventSize(my_adc792_OD,start_adc792);
+	    if(eventSize_adc792) {
+	      if(d_value) cout<<"This ADC evt has "<<eventSize_adc792<<" words"<<endl;
+	      myOE.push_back(eventSize_adc792);
 	    }
-
-//	    if(ADC265) myOE.push_back(adcWords);
-
-	    if(ADC792) {
-	      if(my_adc792_WD.size()) {
-		if(d_value) cout<<" This ADC evt has "<<my_adc792_WD.at(0)<<" words"<<endl;
-		myOE.push_back(my_adc792_WD.at(0));
-	      }
+	  }
+	  
+	  if(ADC792_2) {
+	    eventSize_adc792_2=find_adc792_eventSize(my_adc792_2_OD,start_adc792_2);
+	    if(eventSize_adc792_2) {
+	      if(d_value) cout<<"This 2nd ADC evt has "<<eventSize_adc792_2<<" words"<<endl;
+	      myOE.push_back(eventSize_adc792_2);
 	    }
-
-	    if(ADC792_2) {
-	      if(my_adc792_2_WD.size()) {
-		if(d_value) cout<<" This 2nd ADC evt has "<<my_adc792_2_WD.at(0)<<" words"<<endl;
-		myOE.push_back(my_adc792_2_WD.at(0));
-	      }
+	  }
+	  
+	  if(ADC792_3) {
+	    eventSize_adc792_3=find_adc792_eventSize(my_adc792_3_OD,start_adc792_3);
+	    if(eventSize_adc792_3) {
+	      if(d_value) cout<<"This 3rd ADC evt has "<<eventSize_adc792_3<<" words"<<endl;
+	      myOE.push_back(eventSize_adc792_3);
 	    }
 
-	    if(ADC792_3) {
-	      if(my_adc792_3_WD.size()) {
-		if(d_value) cout<<" This 3rd ADC evt has "<<my_adc792_3_WD.at(0)<<" words"<<endl;
-		myOE.push_back(my_adc792_3_WD.at(0));
-	      }
-	    }
+	  }
 
-	    if(ADC792_3) {
-	      if(my_adc792_3_WD.size()) {
-		if(d_value) cout<<" This 3rd ADC evt has "<<my_adc792_3_WD.at(0)<<" words"<<endl;
-		myOE.push_back(my_adc792_3_WD.at(0));
-	      }
-	    }
-
-	    if(SCALER560) {
-	      //Only dump the scaler on the 'FIRST set of events'
-	      if(my_scal_WD.size()) {
-		if(d_value) cout<<" This scaler evt has "<<my_scal_WD.at(0)<<" words"<<endl;
-		if(ie == 0) myOE.push_back(my_scal_WD.at(0));
-		else myOE.push_back(0);
-	      }
-	    }
-
-	    if(headWords/hm_evt_read != 3) { 
-	      cout<<" Problem with the HEADER!! "<<endl;
-	      cout<<"HEADER words in the multiple events"<<headWords<<" "<<hm_evt_read<<endl;
-	    }
-	    myOE.push_back(headWords/hm_evt_read);
-
-	    //Ok, finished writing the Number of words.
-	    //Now writing the events
-
-	    if(TDC1190 && my_tdc_WD.size()) {
-	      end = start + my_tdc_WD.at(ie); 
-	      for(int idum = start; idum<end; idum++) {
-		if(d_value) 
-		  cout<<" TDC loop:: "<<ie<<" "<<idum<<" "<<my_tdc_OD.at(idum)<<endl;
-		myOE.push_back(my_tdc_OD.at(idum));
-	      }
-	      start = end; //Reset the start position to the end of previuos write
-	    }
-
-	    if(TDC1190_2 && my_tdc2_WD.size()) {
-	      end_tdc2 = start_tdc2 + my_tdc2_WD.at(ie); 
-	      for(int idum = start_tdc2; idum<end_tdc2; idum++) {
-		if(d_value) 
-		  cout<<" TDC 2 loop:: "<<ie<<" "<<idum<<" "<<my_tdc2_OD.at(idum)<<endl;
-		myOE.push_back(my_tdc2_OD.at(idum));
-	      }
-	      start_tdc2 = end_tdc2; //Reset the start position to the end of previuos write
-	    }
-
-	    if(TDC488A) {
+	  if(SCALER560) {
+	    //Only dump the scaler on the of the event readout'
+	    if(my_scal_WD.size()) {
+	      if(d_value) cout<<" This scaler evt has "<<my_scal_WD.at(0)<<" words"<<endl;
+	      if(ie == hm_evt_read-1) myOE.push_back(my_scal_WD.at(0));
+	      else myOE.push_back(0);
+	    } 
+	    else 
+	      myOE.push_back(0);
+	  }
+	  
+	  if(headWords/hm_evt_read != 3) { 
+	    cout<<"Problem with the HEADER!! "<<endl;
+	    cout<<"HEADER words in the multiple events"<<headWords<<" "<<hm_evt_read<<endl;
+	  }
+	  myOE.push_back(headWords/hm_evt_read);
+	  
+	  //Ok, finished writing the Number of words.
+	  //Now writing the events
+	  
+	  if(TDC1190 && my_tdc_WD.size()) {
+	    end = start + my_tdc_WD.at(ie); 
+	    for(int idum = start; idum<end; idum++) {
 	      if(d_value) 
-		cout<<" TDC488:: "<<ie<<" "<<my_v488_WD.size()<<endl;
-	      if(ie<(int)my_v488_WD.size()){
-		end_v488 = start_v488 + my_v488_WD.at(ie); 
+		cout<<" TDC loop:: "<<ie<<" "<<idum<<" "<<my_tdc_OD.at(idum)<<endl;
+	      myOE.push_back(my_tdc_OD.at(idum));
+	    }
+	    start = end; //Reset the start position to the end of previuos write
+	    }
+	  
+	  if(TDC1190_2 && my_tdc2_WD.size()) {
+	    end_tdc2 = start_tdc2 + my_tdc2_WD.at(ie); 
+	    for(int idum = start_tdc2; idum<end_tdc2; idum++) {
+	      if(d_value) 
+		cout<<" TDC 2 loop:: "<<ie<<" "<<idum<<" "<<my_tdc2_OD.at(idum)<<endl;
+		myOE.push_back(my_tdc2_OD.at(idum));
+	    }
+	    start_tdc2 = end_tdc2; //Reset the start position to the end of previuos write
+	  }
+	  
+	  if(TDC488A) {
+	    if(d_value) 
+	      cout<<" TDC488:: "<<ie<<" "<<my_v488_WD.size()<<endl;
+	    if(ie<(int)my_v488_WD.size()){
+	      end_v488 = start_v488 + my_v488_WD.at(ie); 
 		for(int idum = start_v488; idum<end_v488; idum++) {
 		  if(d_value) 
 		    cout<<" V488 loop:: "<<ie<<" "<<idum<<" "<<my_v488_OD.at(idum)<<endl;
 		  myOE.push_back(my_v488_OD.at(idum));
 		}
 		start_v488 = end_v488; //Reset the start position to the end of previuos write
-	      } else {
-		cout<<" eWords:: We are missing an event!!! "<<ie<<" "<<my_v488_WD.size()<<endl;
-		myOE.push_back(40000);
-	      }
+	    } else {
+	      cout<<" eWords:: We are missing an event!!! "<<ie<<" "<<my_v488_WD.size()<<endl;
+	      myOE.push_back(40000);
 	    }
-
-//	    if(ADC265) myOE.insert( myOE.end(), my_adc_OD.begin(), my_adc_OD.end() );
-
-	    if(ADC792 && my_adc792_WD.size()) {
-	      end_adc792 = start_adc792 + my_adc792_WD.at(0); 
-	      for(int idum = start_adc792; idum<end_adc792; idum++) {
-		myOE.push_back(my_adc792_OD.at(idum));
-	      }
-	      start_adc792 = end_adc792; //Reset the start position to the end of previuos write
-	    }
-
-	    if(ADC792_2 && my_adc792_2_WD.size()) {
-	      end_adc792_2 = start_adc792_2 + my_adc792_2_WD.at(0); 
-	      for(int idum = start_adc792_2; idum<end_adc792_2; idum++) {
-		myOE.push_back(my_adc792_2_OD.at(idum));
-	      }
-	      start_adc792_2 = end_adc792_2; //Reset the start position to the end of previuos write
-	    }
-
-	    if(ADC792_3 && my_adc792_3_WD.size()) {
-	      end_adc792_3 = start_adc792_3 + my_adc792_3_WD.at(0); 
-	      for(int idum = start_adc792_3; idum<end_adc792_3; idum++) {
-		myOE.push_back(my_adc792_3_OD.at(idum));
-	      }
-	      start_adc792_3 = end_adc792_3; //Reset the start position to the end of previuos write
-	    }
-
-	    if(SCALER560 && my_scal_OD.size()) {
-	      //Only dump the scaler on the 'FIRST set of events'
-	      if(ie == 0) { 
-		end_v560 = start_v560 + my_scal_WD.at(0); 
-		for(int idum = start_v560; idum<end_v560; idum++) {
-		  myOE.push_back(my_scal_OD.at(idum));
-		}
-		start_v560 = end_v560; //Reset the start position to the end of previuos write
-	      }
-	    }
-
-	    //ADD the header info
-	    end_hea = start_hea + 3;
-	    for(int idum = start_hea; idum<end_hea; idum++) {
-	      myOE.push_back( my_header_OD.at(idum) );
-	    }
-	    start_hea = end_hea;
-	    
-	    daq_status *= writeFastEvent(myOE,&myOut);
-	    
 	  }
+	  
+	  //	    if(ADC265) myOE.insert( myOE.end(), my_adc_OD.begin(), my_adc_OD.end() );
 
-	  //Clears the HEADER after writing the EVENT
-	  my_header_OD.clear();
-
+	  if(ADC792) {
+	    
+	    end_adc792 = start_adc792 + eventSize_adc792;
+	    for(int idum = start_adc792; idum<end_adc792; idum++) {
+	      myOE.push_back(my_adc792_OD.at(idum));
+	    }
+	    start_adc792 = end_adc792; //Reset the start position to the end of previuos write
+	    }
+	  
+	  if(ADC792_2 && my_adc792_2_WD.size()) {
+	    end_adc792_2 = start_adc792_2 + eventSize_adc792_2;
+	    for(int idum = start_adc792_2; idum<end_adc792_2; idum++) {
+	      myOE.push_back(my_adc792_2_OD.at(idum));
+	    }
+	    start_adc792_2 = end_adc792_2; //Reset the start position to the end of previuos write
+	  }
+	  
+	  if(ADC792_3 && my_adc792_3_WD.size()) {
+	    end_adc792_3 = start_adc792_3 + eventSize_adc792_3;
+	    for(int idum = start_adc792_3; idum<end_adc792_3; idum++) {
+	      myOE.push_back(my_adc792_3_OD.at(idum));
+	      }
+	    start_adc792_3 = end_adc792_3; //Reset the start position to the end of previuos write
+	  }
+	  
+	  if(SCALER560 && my_scal_OD.size()) {
+	    //Only dump the scaler on the 'FIRST set of events'
+	    if(ie == hm_evt_read-1) { 
+	      end_v560 = start_v560 + my_scal_WD.at(0); 
+	      for(int idum = start_v560; idum<end_v560; idum++) {
+		myOE.push_back(my_scal_OD.at(idum));
+	      }
+	      start_v560 = end_v560; //Reset the start position to the end of previuos write
+	    }
+	    }
+	  
+	  //ADD the header info
+	  end_hea = start_hea + 3;
+	  for(int idum = start_hea; idum<end_hea; idum++) {
+	    myOE.push_back( my_header_OD.at(idum) );
+	  }
+	  start_hea = end_hea;
+	  
+	  daq_status *= writeFastEvent(myOE,&myOut);
 	}
 	
 
-	if(daq_status!=1){
-	  printf("\nError writing the Event... STOP!\n");
-	  return(1); 
-	}
+	//Clears the HEADER after writing the EVENT
+	my_header_OD.clear();
       }
-
-      if(V1718 && ! IO513) daq_status = read_scaler_1718(BHandle);
       
-      //      if(IO513) daq_status = read_V513_old(BHandle, IO_value);
+      if(daq_status!=1){
+	printf("\nError writing the Event... STOP!\n");
+	return(1); 
+      }
+    
+    
 
+
+      //      if(IO513) daq_status = read_V513_old(BHandle, IO_value);
+      
       if((nevent-(p_value*((int)(nevent/p_value))))==0) 
 	{
 	  gettimeofday(&tempo1, NULL);
@@ -669,7 +701,7 @@ int main(int argc, char** argv)
 	  time_last = time_now;
 	  
 	  if(delta_seconds) rate = ((double)p_value)/delta_seconds;
-	  printf("\n Event number =%d. El time (s): %f. Freq (Hz): %lf \n",
+	  printf("_____ Event number: %d El time (s): %f Freq (Hz): %lf ______\n",
 		 nevent,delta_seconds,rate);
 	  if(!access("acq.stop",F_OK)) {
 	    cout<<"Stopped run from acq.stop : deleting acq.stop file"<<endl;
@@ -679,26 +711,25 @@ int main(int argc, char** argv)
 	}     
       
 
-      /* Reset the strobe bit and send the reset to the DAQ */
-      if (V1718 && !IO513) {
-	daq_status *= clearbusy_1718(BHandle);
-	if (daq_status != 1) 
-	  {
-	    printf("\nerror resetting V1718 -> exiting\n");
-	    return(1); 
-	  }
-      } else if (V1718 && IO513) {
-	/*
-	  reset the strobe bit and send the reset to  the DAQ        
-	*/
-	daq_status *= clear_strobe_V513(BHandle); 
-	daq_status *= reset_daq(BHandle);
-	if (daq_status != 1) 
-	  {
-	    printf("\nerror resetting IO -> exiting\n");
-	    return(1); 
-	  }
-      }
+      /* /\* Reset the strobe bit and send the reset to the DAQ *\/ */
+      /* if (V1718 && !IO513) { */
+      /* 	daq_status *= clearbusy_1718(BHandle); */
+
+      /* 	if (daq_status != 1) */
+      /* 	  { */
+      /* 	    printf("\nerror resetting V1718 -> exiting\n"); */
+      /* 	    return(1); */
+      /* 	  } */
+      /* } else if (V1718 && IO513) { */
+      /* 	/\* */
+      /* 	  reset the strobe bit and send the reset to  the DAQ         */
+      /* 	*\/ */
+      /* 	if (daq_status != 1)  */
+      /* 	  { */
+      /* 	    printf("\nerror resetting IO -> exiting\n"); */
+      /* 	    return(1);  */
+      /* 	  } */
+      /* } */
 
       gettimeofday(&tv, NULL);
       tempo_aftwr = ((double)tv.tv_sec) + ((double)tv.tv_usec)/1000000;
@@ -706,10 +737,20 @@ int main(int argc, char** argv)
 
     }
 
+  std::cout << "++++++ Final run statistics +++++++" << std::endl;
+  tmpscaD.clear();
+  tmpscaD = read_scaler560Vec(BHandle,daq_status); 
+  if(!tmpscaD.size())  cout<<" Warning:: Scaler Read :: "<< tmpscaD.size() << std::endl;
+  if (daq_status != 1) 
+    {
+      printf("\nError reading SCALER 560... STOP!\n");
+      return(1);
+    }
+
   /* Output File finalization */  
   printf("\n Closing output file!\n");
   myOut.close();
-
+  
   /* VME deinitialization */
   bridge_deinit(BHandle);
 
@@ -717,6 +758,7 @@ int main(int argc, char** argv)
 
   return(0);
 }
+
 
 // Read FAST (no decoding)
 unsigned short writeFastEvent(vector<int> wriD, ofstream *Fouf)
@@ -735,10 +777,10 @@ unsigned short writeFastEvent(vector<int> wriD, ofstream *Fouf)
   unsigned short status = 1;
   int size = wriD.size();
   int myD[size];
-  //  cout<<" New Event "<<endl;
+  //  cout<<"++++++++ New Event of size " << size <<endl;
   for(int dum=0; dum<size; dum++) {
     myD[dum] = wriD[dum];
-    //    cout<<myD[dum]<<" "<<dum<<endl;
+    // cout<<dum << "\t" << myD[dum] <<endl;
   }
   Fouf->write((char *) &size,sizeof(int));
   Fouf->write((char *) myD,wriD.size()*sizeof(int));
