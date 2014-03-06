@@ -11,7 +11,7 @@
 
 using namespace std;
 
-#define scaler560_debug 1
+#define scaler560_debug 0
 /*-----------------------------------------------------------------------------------*/
   
 int init_scaler560(int32_t BHandle){
