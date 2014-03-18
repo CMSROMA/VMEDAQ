@@ -179,6 +179,7 @@ int main(int argc, char** argv)
 
   /* Output file initialization  */
   int start, end;
+  int start_adc265;
   int start_adc792, end_adc792;
   int start_adc792_2, end_adc792_2;
   int start_adc792_3, end_adc792_3;
@@ -362,16 +363,15 @@ int main(int argc, char** argv)
 	/* read the ADC 265*/
 	if(ADC265) {
 	  my_adc_OD.clear();
-	  //here we should improve the readomg pf n_events in a single event
-	  my_adc_OD = read_adc265(BHandle,daq_status); 
-	  
+	  my_adc_OD = read_Nadc265(BHandle,hm_evt_read,daq_status); 
 	  if (daq_status != 1) 
 	    {
 	      printf("\nError reading ADC 265... STOP!\n");
 	      return(1);
 	    }
 	  board_num += 8;
-	  adcWords = my_adc_OD.size();
+	  /* adcWords = my_adc_OD.size(); */
+	  /* adcWords = my_adc_OD.size(); */
 	}
 
 	/* read the ADC 792*/
@@ -462,6 +462,7 @@ int main(int argc, char** argv)
 
 	start = 0;
 
+	start_adc265 = 0;
 	start_adc792 = 0;
 	start_adc792_2 = 0;
 	start_adc792_3 = 0;
@@ -547,6 +548,16 @@ int main(int argc, char** argv)
 	  int eventSize_adc792_2=0;
 	  int eventSize_adc792_3=0;
 
+	  if(ADC265) {
+	    if (! (start_adc265 + ADC265_CHANNEL >  my_adc_OD.size()) )
+		myOE.push_back(ADC265_CHANNEL);
+	    else
+	      {
+		cout<<"ADC265::ERROR::FIFO DATA ARE CORRUPTED" <<endl;
+		myOE.push_back(0);
+	      }
+	  }
+
 	  if(ADC792) {
 	    eventSize_adc792=find_adc792_eventSize(my_adc792_OD,start_adc792);
 	    if(eventSize_adc792) {
@@ -629,7 +640,11 @@ int main(int argc, char** argv)
 	    }
 	  }
 	  
-	  //	    if(ADC265) myOE.insert( myOE.end(), my_adc_OD.begin(), my_adc_OD.end() );
+	  if(ADC265) {
+	    if (! (start_adc265 + ADC265_CHANNEL >  my_adc_OD.size()) )
+	      myOE.insert( myOE.end(), my_adc_OD.at(start_adc265), my_adc_OD.at(start_adc265 + ADC265_CHANNEL) );
+	    start_adc265+=ADC265_CHANNEL;
+	  }
 
 	  if(ADC792) {
 	    
