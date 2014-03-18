@@ -27,6 +27,7 @@
 #include <iostream>
 #include <vector>
 
+#define update_scaler 0
 using namespace std;
 
 int main(int argc, char** argv)
@@ -314,7 +315,7 @@ int main(int argc, char** argv)
 	  my_tdc_OD.clear();
 	  my_tdc_WD.clear();
 	  //	  my_tdc_OD = readNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD);
-	  my_tdc_OD = readFastNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD,false);
+	  my_tdc_OD = readFastNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD,true);
 	  if(d_value) 
 	    cout<<"Filled Word Vector:: "<<my_tdc_WD.size()<<" "<<my_tdc_OD.size()<<endl;
 	  if(daq_status!=1){
@@ -424,7 +425,7 @@ int main(int argc, char** argv)
 	}
 
 	/* read the SCALER 560 EACH event*/
-	if(SCALER560) {
+	if(SCALER560 && update_scaler) {
 	  
 	  my_scal_OD.clear();
 	  my_scal_WD.clear();
@@ -571,7 +572,7 @@ int main(int argc, char** argv)
 
 	  }
 
-	  if(SCALER560) {
+	  if(SCALER560 && update_scaler) {
 	    //Only dump the scaler on the of the event readout'
 	    if(my_scal_WD.size()) {
 	      if(d_value) cout<<" This scaler evt has "<<my_scal_WD.at(0)<<" words"<<endl;
@@ -655,7 +656,7 @@ int main(int argc, char** argv)
 	    start_adc792_3 = end_adc792_3; //Reset the start position to the end of previuos write
 	  }
 	  
-	  if(SCALER560 && my_scal_OD.size()) {
+	  if(SCALER560 && my_scal_OD.size() && update_scaler) {
 	    //Only dump the scaler on the 'FIRST set of events'
 	    if(ie == hm_evt_read-1) { 
 	      end_v560 = start_v560 + my_scal_WD.at(0); 

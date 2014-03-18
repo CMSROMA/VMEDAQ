@@ -18,13 +18,13 @@ COPTS = -g -Wall -DLINUX -fPIC -I$(INCLUDE_DIR)
 
 all: $(BINS)
 
-acquire: $(OBJS) main_acquisition.o
+acquire: $(OBJS) main_acquisition.o 
 	g++ -g -DLINUX -o acquire $(OBJS) -lncurses -lm -l CAENVME main_acquisition.o
 
 count: $(OBJS) simple_count.o
 	g++ -g -DLINUX -o count $(OBJS) -lncurses -lm -l CAENVME simple_count.o
 
-main_acquisition.o: main_acquisition.c
+main_acquisition.o: main_acquisition.c main_acquisition.h
 	g++ $(COPTS) -c main_acquisition.c
 
 simple_count.o: simple_count.c
