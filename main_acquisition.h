@@ -7,11 +7,12 @@
 #define TDC488A 0
 #define TDC1190 0
 #define TDC1190_2 0
-#define ADC265 0
-#define ADC792 1
+#define ADC265 1
+#define ADC792 0
 #define ADC792_2 0
 #define ADC792_3 0
 #define SCALER560 1
+#define DISCR814 1
 #define debug 1
 
 /* 1 modulo attivo*/

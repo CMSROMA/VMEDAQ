@@ -23,6 +23,7 @@
 #include "scaler560_lib.h"
 #include "v1718_lib.h"
 #include "V513.h"
+#include "V814_lib.h"
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -114,6 +115,17 @@ int main(int argc, char** argv)
       if (status_init != 1) { return(1); }
     } 
 
+  if(DISCR814)
+    {
+      printf("\nV814 discriminator initialization\n");
+      status_init *= cvt_V814_init(BHandle);
+      /* status_init *= busy_V513(BHandle,DAQ_BUSY_ON); */
+      if (status_init != 1) { 
+	printf("Error in DISCR 814 initialization... STOP!\n");
+	return(1); 
+      }
+    } 
+  
   /* Scaler560 Initialisation */
   if(SCALER560) {
     printf("\n Initialization of SCALER 560\n");
@@ -642,7 +654,10 @@ int main(int argc, char** argv)
 	  
 	  if(ADC265) {
 	    if (! (start_adc265 + ADC265_CHANNEL >  my_adc_OD.size()) )
-	      myOE.insert( myOE.end(), my_adc_OD.at(start_adc265), my_adc_OD.at(start_adc265 + ADC265_CHANNEL) );
+	      for(int idum = start_adc265; idum<start_adc265 + ADC265_CHANNEL; idum++)
+		{
+		  myOE.push_back(my_adc_OD.at(idum));
+		}
 	    start_adc265+=ADC265_CHANNEL;
 	  }
 

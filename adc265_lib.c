@@ -126,18 +126,17 @@ vector<int> read_Nadc265(int32_t BHandle, int nevts, int status)
   vector<int> outD;
   outD.clear();
 
-  unsigned long address, data, *poi2data;
+  unsigned long address, data;
   unsigned long adc265_rdy, adc265_full;
   int  mm, canale, risultato, adc265_range, caenst;
 
   status = 1;
-  poi2data = &data;
   /*
     check if the fifo has something inside
    */  
   address = ADC265_ADDRESS + adc265_shift.statusreg;
   //    status = vme_read_dt(address,poi2data,ADC265_AM,ADC265_DS);
-  caenst = CAENVME_ReadCycle(BHandle,address,poi2data,cvA24_U_DATA,cvD16);
+  caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
   status *= (1-caenst); 
   adc265_rdy = data & adc265_bitmask.rdy;
   adc265_rdy = (data & adc265_bitmask.rdy)>>15;
@@ -149,7 +148,7 @@ vector<int> read_Nadc265(int32_t BHandle, int nevts, int status)
    Then read the ADC265 data fifo
 */
 #ifdef ADC265_DEBUG
-      printf("+++++++++++++++++++++++++++++++\n");
+      printf("+++++++++++ ADC 265 DEBUG +++++++++\n");
 #endif
       address = ADC265_ADDRESS + adc265_shift.datareg;
 
@@ -158,16 +157,16 @@ vector<int> read_Nadc265(int32_t BHandle, int nevts, int status)
 	  for(mm=0;mm < 2 * ADC265_CHANNEL;mm++)
 	    {
 	      //	  status *= vme_read_dt(address,poi2data,ADC265_AM,ADC265_DS);
-	      caenst = CAENVME_ReadCycle(BHandle,address,poi2data,cvA24_U_DATA,cvD16);
+	      caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
 	      status *= (1-caenst); 
 	      adc265_range =(int) ((data & adc265_bitmask.range)>>12);
 	      //	  printf("mm=%d e adc265_range=%d\n",mm,adc265_range);
 	      if(adc265_range==0)
 		{
-		  ADC265_value[canale] = (int)data;
 #ifdef ADC265_DEBUG
 		  canale = (int) ((data & adc265_bitmask.channel)>>13);
 		  risultato = (int) (data & adc265_bitmask.convdata);
+		  ADC265_value[canale] = (int)data;
 		  printf("ADC265::DATA::evbuff=%d channel=%d  value=%d\n",iev,canale,risultato);
 #endif
 		}
@@ -184,7 +183,7 @@ vector<int> read_Nadc265(int32_t BHandle, int nevts, int status)
   address = ADC265_ADDRESS + adc265_shift.clear;
   data = 0x0;
   //  status *= vme_write_dt(address,poi2data,ADC265_AM,ADC265_DS);
-  caenst = CAENVME_WriteCycle(BHandle,address,poi2data,cvA24_U_DATA,cvD16);
+  caenst = CAENVME_WriteCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
   status *= (1-caenst); 
   return outD;
 }
