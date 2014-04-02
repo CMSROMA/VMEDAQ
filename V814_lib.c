@@ -97,7 +97,7 @@ unsigned short cvt_V814_init( int32_t BHandle )
 
   unsigned short status(1);
  
-  status*=cvt_V814_set_pattern_inhibit(BHandle,0x0001);
+  status*=cvt_V814_set_pattern_inhibit(BHandle,0x0007);
   if (status!=1)
     {
       std::cout << "Error initializing V814 " << status << std::endl;
@@ -106,25 +106,25 @@ unsigned short cvt_V814_init( int32_t BHandle )
   if (V814_DEBUG)
     std::cout <<  "Setting pattern 0x000F " << status << std::endl;
 
-  status*=cvt_V814_set_threshold(BHandle,CVT_V814_THRESHOLD_0,0x1F);
+  status*=cvt_V814_set_threshold(BHandle,CVT_V814_THRESHOLD_0,0x96);
 
   if (status!=1)
     {
       std::cout << "Error initializing V814 " << status << std::endl;
       return -1;
     }
-  /* status*=cvt_V814_set_threshold(BHandle,CVT_V814_THRESHOLD_1,0x5A); */
-  /* if (status!=1) */
-  /*   { */
-  /*     std::cout << "Error initializing V814" << std::endl; */
-  /*     return -1; */
-  /*   } */
-  /* status*=cvt_V814_set_threshold(BHandle,CVT_V814_THRESHOLD_2,0x5A); */
-  /* if (status!=1) */
-  /*   { */
-  /*     std::cout << "Error initializing V814" << std::endl; */
-  /*     return -1; */
-  /*   } */
+  status*=cvt_V814_set_threshold(BHandle,CVT_V814_THRESHOLD_1,0x96);
+  if (status!=1)
+    {
+      std::cout << "Error initializing V814" << std::endl;
+      return -1;
+    }
+  status*=cvt_V814_set_threshold(BHandle,CVT_V814_THRESHOLD_2,0x96);
+  if (status!=1)
+    {
+      std::cout << "Error initializing V814" << std::endl;
+      return -1;
+    }
   /* status*=cvt_V814_set_threshold(BHandle,CVT_V814_THRESHOLD_3,0x5A); */
   /* if (status!=1) */
   /*   { */
@@ -134,7 +134,7 @@ unsigned short cvt_V814_init( int32_t BHandle )
   if (V814_DEBUG)
     std::cout <<  "Set thresholds " << status << std::endl;
 
-  status*=cvt_V814_set_majority_threshold(BHandle,0x6); // 2 0x13 3 0x19
+  status*=cvt_V814_set_majority_threshold(BHandle,0x13); // 2 0x13 3 0x19
   if (status!=1)
     {
       std::cout << "Error initializing V814" << std::endl;
