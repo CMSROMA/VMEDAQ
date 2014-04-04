@@ -6,14 +6,15 @@
 
 #define ADC265_ADDRESS   0x100000
 #define ADC265_CHANNEL   8
+#define ADC265_MAX_BUFFER_EVENT_SIZE 16
 #define ADC265_AM        0x39    /* ADC265 address modifier -> A24 */
 #define ADC265_DS        0x2     /* ADC265 data size -> D16 */
-
 
 #define ADC265_DEBUG    1
 
 unsigned short init_adc265(int32_t BHandle);
 std::vector<int> read_adc265(int32_t BHandle,int status);
+std::vector<int> read_Nadc265(int32_t BHandle, int nevents,int status);
 unsigned short read_adc265_simple(int32_t BHandle, int *pAdcData);
 
 struct a265_shift{

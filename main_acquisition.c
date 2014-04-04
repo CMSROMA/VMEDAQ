@@ -23,10 +23,12 @@
 #include "scaler560_lib.h"
 #include "v1718_lib.h"
 #include "V513.h"
+#include "V814_lib.h"
 #include <fstream>
 #include <iostream>
 #include <vector>
 
+#define update_scaler 0
 using namespace std;
 
 int main(int argc, char** argv)
@@ -113,6 +115,17 @@ int main(int argc, char** argv)
       if (status_init != 1) { return(1); }
     } 
 
+  if(DISCR814)
+    {
+      printf("\nV814 discriminator initialization\n");
+      status_init *= cvt_V814_init(BHandle);
+      /* status_init *= busy_V513(BHandle,DAQ_BUSY_ON); */
+      if (status_init != 1) { 
+	printf("Error in DISCR 814 initialization... STOP!\n");
+	return(1); 
+      }
+    } 
+  
   /* Scaler560 Initialisation */
   if(SCALER560) {
     printf("\n Initialization of SCALER 560\n");
@@ -178,6 +191,7 @@ int main(int argc, char** argv)
 
   /* Output file initialization  */
   int start, end;
+  int start_adc265;
   int start_adc792, end_adc792;
   int start_adc792_2, end_adc792_2;
   int start_adc792_3, end_adc792_3;
@@ -314,7 +328,7 @@ int main(int argc, char** argv)
 	  my_tdc_OD.clear();
 	  my_tdc_WD.clear();
 	  //	  my_tdc_OD = readNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD);
-	  my_tdc_OD = readFastNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD,false);
+	  my_tdc_OD = readFastNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD,true);
 	  if(d_value) 
 	    cout<<"Filled Word Vector:: "<<my_tdc_WD.size()<<" "<<my_tdc_OD.size()<<endl;
 	  if(daq_status!=1){
@@ -361,16 +375,15 @@ int main(int argc, char** argv)
 	/* read the ADC 265*/
 	if(ADC265) {
 	  my_adc_OD.clear();
-	  //here we should improve the readomg pf n_events in a single event
-	  my_adc_OD = read_adc265(BHandle,daq_status); 
-	  
+	  my_adc_OD = read_Nadc265(BHandle,hm_evt_read,daq_status); 
 	  if (daq_status != 1) 
 	    {
 	      printf("\nError reading ADC 265... STOP!\n");
 	      return(1);
 	    }
 	  board_num += 8;
-	  adcWords = my_adc_OD.size();
+	  /* adcWords = my_adc_OD.size(); */
+	  /* adcWords = my_adc_OD.size(); */
 	}
 
 	/* read the ADC 792*/
@@ -424,7 +437,7 @@ int main(int argc, char** argv)
 	}
 
 	/* read the SCALER 560 EACH event*/
-	if(SCALER560) {
+	if(SCALER560 && update_scaler) {
 	  
 	  my_scal_OD.clear();
 	  my_scal_WD.clear();
@@ -461,6 +474,7 @@ int main(int argc, char** argv)
 
 	start = 0;
 
+	start_adc265 = 0;
 	start_adc792 = 0;
 	start_adc792_2 = 0;
 	start_adc792_3 = 0;
@@ -546,6 +560,16 @@ int main(int argc, char** argv)
 	  int eventSize_adc792_2=0;
 	  int eventSize_adc792_3=0;
 
+	  if(ADC265) {
+	    if (! (start_adc265 + ADC265_CHANNEL >  my_adc_OD.size()) )
+		myOE.push_back(ADC265_CHANNEL);
+	    else
+	      {
+		cout<<"ADC265::ERROR::FIFO DATA ARE CORRUPTED" <<endl;
+		myOE.push_back(0);
+	      }
+	  }
+
 	  if(ADC792) {
 	    eventSize_adc792=find_adc792_eventSize(my_adc792_OD,start_adc792);
 	    if(eventSize_adc792) {
@@ -571,7 +595,7 @@ int main(int argc, char** argv)
 
 	  }
 
-	  if(SCALER560) {
+	  if(SCALER560 && update_scaler) {
 	    //Only dump the scaler on the of the event readout'
 	    if(my_scal_WD.size()) {
 	      if(d_value) cout<<" This scaler evt has "<<my_scal_WD.at(0)<<" words"<<endl;
@@ -628,7 +652,14 @@ int main(int argc, char** argv)
 	    }
 	  }
 	  
-	  //	    if(ADC265) myOE.insert( myOE.end(), my_adc_OD.begin(), my_adc_OD.end() );
+	  if(ADC265) {
+	    if (! (start_adc265 + ADC265_CHANNEL >  my_adc_OD.size()) )
+	      for(int idum = start_adc265; idum<start_adc265 + ADC265_CHANNEL; idum++)
+		{
+		  myOE.push_back(my_adc_OD.at(idum));
+		}
+	    start_adc265+=ADC265_CHANNEL;
+	  }
 
 	  if(ADC792) {
 	    
@@ -655,7 +686,7 @@ int main(int argc, char** argv)
 	    start_adc792_3 = end_adc792_3; //Reset the start position to the end of previuos write
 	  }
 	  
-	  if(SCALER560 && my_scal_OD.size()) {
+	  if(SCALER560 && my_scal_OD.size() && update_scaler) {
 	    //Only dump the scaler on the 'FIRST set of events'
 	    if(ie == hm_evt_read-1) { 
 	      end_v560 = start_v560 + my_scal_WD.at(0); 
@@ -741,6 +772,9 @@ int main(int argc, char** argv)
   tmpscaD.clear();
   tmpscaD = read_scaler560Vec(BHandle,daq_status); 
   if(!tmpscaD.size())  cout<<" Warning:: Scaler Read :: "<< tmpscaD.size() << std::endl;
+  for (unsigned int i(0);i<tmpscaD.size();++i)
+    std::cout << "V560:: channel " << i << " has " << tmpscaD[i] << " counts" << std::endl;
+
   if (daq_status != 1) 
     {
       printf("\nError reading SCALER 560... STOP!\n");

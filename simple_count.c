@@ -95,6 +95,9 @@ int main(int argc, char** argv)
   tmpscaD.clear();
   tmpscaD = read_scaler560Vec(BHandle,daq_status); 
   if(!tmpscaD.size())  cout<<" Warning:: Scaler Read :: "<< tmpscaD.size() << std::endl;
+  for (unsigned int i(0);i<tmpscaD.size();++i)
+    std::cout << "V560:: channel " << i << " has " << tmpscaD[i] << " counts" << std::endl;
+
   if (daq_status != 1) 
     {
       printf("Error reading SCALER 560... STOP!\n");
