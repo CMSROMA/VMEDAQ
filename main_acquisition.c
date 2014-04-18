@@ -327,8 +327,8 @@ int main(int argc, char** argv)
 	if(TDC1190) {
 	  my_tdc_OD.clear();
 	  my_tdc_WD.clear();
-	  //	  my_tdc_OD = readNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD);
-	  my_tdc_OD = readFastNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD,true);
+	  my_tdc_OD = readNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD);
+	  //my_tdc_OD = readFastNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD,true);
 	  if(d_value) 
 	    cout<<"Filled Word Vector:: "<<my_tdc_WD.size()<<" "<<my_tdc_OD.size()<<endl;
 	  if(daq_status!=1){
