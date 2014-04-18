@@ -24,6 +24,7 @@
 #include "v1718_lib.h"
 #include "V513.h"
 #include "V814_lib.h"
+#include "V262.h"
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -44,6 +45,8 @@ int main(int argc, char** argv)
   char* f_value = "dumb";
   ofstream myOut;
   int d_value = 0;
+  float pedestal_freq=0;
+  bool beam_trigger=0;
 
   //a.out -a 3 -b 5.6 -c "I am a string" -d 222 111
   for (i = 1; i < argc; i++) {
@@ -51,13 +54,17 @@ int main(int argc, char** argv)
     if (argv[i][0] == '-') {
       /* Use the next character to decide what to do. */
       switch (argv[i][1]) {
-      case 'n':n_value = atoi(argv[++i]);
+      case 'n': n_value = atoi(argv[++i]);
 	break;
       case 'p':p_value = atoi(argv[++i]);
 	break;
       case 'f':f_value = argv[++i];
 	break;
       case 'd':d_value = atoi(argv[++i]);
+	break;
+      case 'b': beam_trigger = true;
+	break;
+      case 'r': pedestal_freq = atof(argv[++i]);
 	break;
       }
     }
@@ -239,8 +246,10 @@ int main(int argc, char** argv)
 
   int nreadout=0;
 
-  /* Start of the event collection cycle */
+  if (IO262)
+    status_init *=OutCh_V262(BHandle,0,!beam_trigger); 
 
+  /* Start of the event collection cycle */
   while(nevent<(int)max_evts)
     {
       board_num = 0;
@@ -273,6 +282,12 @@ int main(int argc, char** argv)
 	  }
       }
 
+      if (!beam_trigger && IO262 && pedestal_freq>0)
+	{
+	  float usec_delay=1.E6/(pedestal_freq);
+	  usleep(usec_delay);
+	  daq_status=PulseCh_V262(BHandle,0);
+	}
       /* Wait for the trigger signal from the IO */
       if (V1718 && !IO513) {
 	while(!trigger)
@@ -287,6 +302,7 @@ int main(int argc, char** argv)
 	  return(1);
 	}
 	daq_status *= setbusy_1718(BHandle,DAQ_TRIG_ACK); //acknowledge of the trigger to latch the trigger bit
+
 
       } else if (V1718 && IO513) {
 	while(!trigger)

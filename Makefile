@@ -8,7 +8,7 @@
 # daq for the CAEN bridge v1718
 
 
-OBJS = adc265_lib.o adc792_lib.o tdc1190_lib.o tdcV488A_lib.o v1718_lib.o vme_bridge.o V513_lib.o scaler560_lib.o V814_lib.o
+OBJS = adc265_lib.o adc792_lib.o tdc1190_lib.o tdcV488A_lib.o v1718_lib.o vme_bridge.o V513_lib.o V262_lib.o scaler560_lib.o V814_lib.o
 
 BINS = acquire count
 
@@ -50,6 +50,9 @@ v1718_lib.o: v1718_lib.c v1718_lib.h
 
 V513_lib.o: V513_lib.cc V513.h 
 	g++ $(COPTS) -c V513_lib.cc
+
+V262_lib.o: V262_lib.cc V262.h 
+	g++ $(COPTS) -c V262_lib.cc
 
 V814_lib.o: V814_lib.c V814_lib.h 
 	g++ $(COPTS) -c V814_lib.c
