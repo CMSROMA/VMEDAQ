@@ -337,7 +337,7 @@ int main(int argc, char** argv)
 	  }
       }
 
-      /* measure the daq time */
+      /* Attach a TIMESPAMP to the event */
       gettimeofday(&tv, NULL);
       tempo_now = ((double)tv.tv_sec) + ((double)tv.tv_usec)/1000000;
       tempo_now_int = (tv.tv_sec)*1000000 + (tv.tv_usec);
@@ -833,7 +833,7 @@ int main(int argc, char** argv)
 }
 
 
-// Read FAST (no decoding)
+// Write FAST event (no decoding)
 unsigned short writeFastEvent(vector<int> wriD, ofstream *Fouf)
 {
 
