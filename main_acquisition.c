@@ -70,6 +70,19 @@ int main(int argc, char** argv)
     }
   }
 
+  //Check options
+  if (beam_trigger && pedestal_freq>0)
+    {
+      printf("Cannot have beam and pedestals at the same time:: EXIT!\n");
+      return(1); 
+    }
+
+  if (pedestal_freq>0 && !IO262)
+    {
+      printf("Cannot have pedestals without IO262:: EXIT!\n");
+      return(1); 
+    }
+
   double tempo_last=0., time_start=0., time_last=0., delta_seconds=0., time_now=0., tempo_aftwr=0.;
   double tempo_start=0., tempo_now =0., tempo_last_event=0.;
   double elapsed_seconds=0., elapsed_seconds_dt=0.;
@@ -89,7 +102,7 @@ int main(int argc, char** argv)
   status_init = bridge_init(BHandle);
 
   /* VME deinitialization */
-  printf("\n\n VME initialization\n");
+  printf("VME initialization\n");
   if (status_init != 1) 
     {
       printf("VME Initialization error ... STOP!\n");
@@ -99,7 +112,7 @@ int main(int argc, char** argv)
   /* Modules initialization */
   if(V1718)
     {
-      printf("\n Bridge initialization and trigger vetoed\n");
+      printf("V1718 bridge initialization\n");
       status_init *= init_1718(BHandle);
       status_init *= init_pulser_1718(BHandle) ;
       status_init *= set_configuration_1718(BHandle);
@@ -110,13 +123,13 @@ int main(int argc, char** argv)
       
     } 
   else {
-    printf("\n No TRIGGER module is present:: EXIT!\n");
+    printf("\nNo INTERFACE module is present:: EXIT!\n");
     return(1); 
   }
 
   if(IO513)
     {
-      printf("\n IO register initialization and trigger vetoed\n");
+      printf("V513 register initialization\n");
       status_init *= init_V513(BHandle);
       status_init *= busy_V513(BHandle,DAQ_BUSY_ON);
       if (status_init != 1) { return(1); }
@@ -124,7 +137,7 @@ int main(int argc, char** argv)
 
   if(DISCR814)
     {
-      printf("\nV814 discriminator initialization\n");
+      printf("V814 discriminator initialization\n");
       status_init *= cvt_V814_init(BHandle);
       /* status_init *= busy_V513(BHandle,DAQ_BUSY_ON); */
       if (status_init != 1) { 
@@ -135,7 +148,7 @@ int main(int argc, char** argv)
   
   /* Scaler560 Initialisation */
   if(SCALER560) {
-    printf("\n Initialization of SCALER 560\n");
+    printf("V560 scaler initialization\n");
     status_init *= init_scaler560(BHandle);
     if (status_init != 1) 
       {
@@ -150,7 +163,7 @@ int main(int argc, char** argv)
   */
   if(TDC1190 || TDC1190_2) 
     {
-      printf("\n Initialization of TDC1190 \n");
+      printf("V1290 TDC initialization\n");
       status_init *= init_tdc1190(BHandle);
       if(status_init!=1)
 	{
@@ -163,7 +176,7 @@ int main(int argc, char** argv)
 
   /* ADC 265 initialization */
   if(ADC265) {
-    printf("\n Initialization of ADC 265\n");
+    printf("V265 ADC initialization\n");
     status_init *= init_adc265(BHandle);
     if (status_init != 1) 
       {
@@ -174,7 +187,7 @@ int main(int argc, char** argv)
 
   /* Fast TDC initialization */
   if(TDC488A) {
-    printf("\n Initialization of TDCV488A \n");
+    printf("Initialization of TDCV488A \n");
     status_init *= init_tdcV488A(BHandle);
     if(status_init!=1) {
 	printf("Error in tdcV488A initialization.... STOP!\n");
@@ -184,7 +197,7 @@ int main(int argc, char** argv)
   
   /* ADC 792 initialization */
   if(ADC792) {
-    printf("\n Initialization of ADC 792\n");
+    printf("V792 ADC initialization\n");
     status_init *= init_adc792(BHandle,0); //Initialize the first card
     if (status_init != 1) 
       {
@@ -193,7 +206,20 @@ int main(int argc, char** argv)
       }
   }
 
-  printf("\n VME and modules initialization completed \n\n Start data acquisition\n");
+  /* IO 262 initialization */
+  if (IO262)
+    {
+      printf("V262 IO register initialization\n");
+      status_init *=OutCh_V262(BHandle,0,!beam_trigger); 
+      printf("V262: trigger beam is %d\n",beam_trigger);
+      if (status_init != 1) 
+	{
+	  printf("Error setting the beam trigger veto... STOP!\n");
+	  return(1);
+	}
+    }
+
+  printf("================================================\nVME and modules initialization completed\n\nStart data acquisition\n================================================\n");
   
 
   /* Output file initialization  */
@@ -246,8 +272,6 @@ int main(int argc, char** argv)
 
   int nreadout=0;
 
-  if (IO262)
-    status_init *=OutCh_V262(BHandle,0,!beam_trigger); 
 
   /* Start of the event collection cycle */
   while(nevent<(int)max_evts)
@@ -282,12 +306,14 @@ int main(int argc, char** argv)
 	  }
       }
 
+
       if (!beam_trigger && IO262 && pedestal_freq>0)
 	{
 	  float usec_delay=1.E6/(pedestal_freq);
 	  usleep(usec_delay);
 	  daq_status=PulseCh_V262(BHandle,0);
 	}
+
       /* Wait for the trigger signal from the IO */
       if (V1718 && !IO513) {
 	while(!trigger)
@@ -733,9 +759,6 @@ int main(int argc, char** argv)
 	return(1); 
       }
     
-    
-
-
       //      if(IO513) daq_status = read_V513_old(BHandle, IO_value);
       
       if((nevent-(p_value*((int)(nevent/p_value))))==0) 
