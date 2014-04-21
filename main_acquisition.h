@@ -4,6 +4,7 @@
 /* GENERAL SETTING  */
 #define V1718 1
 #define IO513 0
+#define IO262 1
 #define TDC488A 0
 #define TDC1190 0
 #define TDC1190_2 0

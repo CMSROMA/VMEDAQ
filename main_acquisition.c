@@ -24,12 +24,33 @@
 #include "v1718_lib.h"
 #include "V513.h"
 #include "V814_lib.h"
+#include "V262.h"
 #include <fstream>
 #include <iostream>
 #include <vector>
 
 #define update_scaler 0
 using namespace std;
+
+time_t ref_time;
+
+long gettimestamp(struct timeval *time)
+{
+  long time_msec;
+  std::cout << time->tv_sec << ","  << ref_time << std::endl;
+  time_msec=(time->tv_sec-ref_time)*1000;
+  time_msec+=time->tv_usec/1000;
+  return time_msec;
+}
+
+long timevaldiff(struct timeval *starttime, struct timeval *finishtime)
+{
+  long usec;
+  usec=(finishtime->tv_sec-starttime->tv_sec)*1000000;
+  usec+=(finishtime->tv_usec-starttime->tv_usec);
+  return usec;
+}
+
 
 int main(int argc, char** argv)
 {
@@ -39,19 +60,34 @@ int main(int argc, char** argv)
   int i; 
   double rate;
   int32_t BHandle(0);
+
   int n_value = 0; int p_value = 50;
   //float b_value = 0.0;
   char* f_value = "dumb";
+
   ofstream myOut;
+
   int d_value = 0;
 
-  //a.out -a 3 -b 5.6 -c "I am a string" -d 222 111
+  float pedestal_freq=0;
+  bool beam_trigger=0;
+
+  //Reference time 2014-04-01 00:00:00
+  tm ref_date;
+  ref_date.tm_hour = 0;
+  ref_date.tm_min = 0;
+  ref_date.tm_sec = 0;
+  ref_date.tm_year = 114;
+  ref_date.tm_mon = 3;
+  ref_date.tm_mday = 1;
+  ref_time=mktime(&ref_date);
+
   for (i = 1; i < argc; i++) {
     /* Check for a switch (leading "-"). */
     if (argv[i][0] == '-') {
       /* Use the next character to decide what to do. */
       switch (argv[i][1]) {
-      case 'n':n_value = atoi(argv[++i]);
+      case 'n': n_value = atoi(argv[++i]);
 	break;
       case 'p':p_value = atoi(argv[++i]);
 	break;
@@ -59,18 +95,33 @@ int main(int argc, char** argv)
 	break;
       case 'd':d_value = atoi(argv[++i]);
 	break;
+      case 'b': beam_trigger = true;
+	break;
+      case 'r': pedestal_freq = atof(argv[++i]);
+	break;
       }
     }
   }
 
-  double tempo_last=0., time_start=0., time_last=0., delta_seconds=0., time_now=0., tempo_aftwr=0.;
-  double tempo_start=0., tempo_now =0., tempo_last_event=0.;
-  double elapsed_seconds=0., elapsed_seconds_dt=0.;
-  int    n_microseconds = 0, n_microseconds_dt = 0;
-  int tempo_now_int = 0;
-  struct timeval tv;
+  //Check options
+  if (beam_trigger && pedestal_freq>0)
+    {
+      printf("Cannot have beam and pedestals at the same time:: EXIT!\n");
+      return(1); 
+    }
 
-  struct timeval tempo1;
+  if (pedestal_freq>0 && !IO262)
+    {
+      printf("Cannot have pedestals without IO262:: EXIT!\n");
+      return(1); 
+    }
+
+  /* double tempo_last=0., time_start=0., time_last=0., delta_seconds=0., time_now=0., tempo_aftwr=0.; */
+  /* double tempo_start=0., tempo_now =0., tempo_last_event=0.; */
+  int    n_microseconds = 0, n_microseconds_dt = 0, elapsed_microseconds_dt=0, delta_micro_seconds=0; 
+
+  /* int tempo_now_int = 0; */
+  struct timeval tv,tv1,tv2,tv3;
 
   printf("n_evts(max) = %d\n", n_value);
   if (f_value != NULL) printf("file = \"%s\"\n", f_value);
@@ -82,7 +133,7 @@ int main(int argc, char** argv)
   status_init = bridge_init(BHandle);
 
   /* VME deinitialization */
-  printf("\n\n VME initialization\n");
+  printf("VME initialization\n");
   if (status_init != 1) 
     {
       printf("VME Initialization error ... STOP!\n");
@@ -92,7 +143,7 @@ int main(int argc, char** argv)
   /* Modules initialization */
   if(V1718)
     {
-      printf("\n Bridge initialization and trigger vetoed\n");
+      printf("V1718 bridge initialization\n");
       status_init *= init_1718(BHandle);
       status_init *= init_pulser_1718(BHandle) ;
       status_init *= set_configuration_1718(BHandle);
@@ -103,13 +154,13 @@ int main(int argc, char** argv)
       
     } 
   else {
-    printf("\n No TRIGGER module is present:: EXIT!\n");
+    printf("\nNo INTERFACE module is present:: EXIT!\n");
     return(1); 
   }
 
   if(IO513)
     {
-      printf("\n IO register initialization and trigger vetoed\n");
+      printf("V513 register initialization\n");
       status_init *= init_V513(BHandle);
       status_init *= busy_V513(BHandle,DAQ_BUSY_ON);
       if (status_init != 1) { return(1); }
@@ -117,7 +168,7 @@ int main(int argc, char** argv)
 
   if(DISCR814)
     {
-      printf("\nV814 discriminator initialization\n");
+      printf("V814 discriminator initialization\n");
       status_init *= cvt_V814_init(BHandle);
       /* status_init *= busy_V513(BHandle,DAQ_BUSY_ON); */
       if (status_init != 1) { 
@@ -128,7 +179,7 @@ int main(int argc, char** argv)
   
   /* Scaler560 Initialisation */
   if(SCALER560) {
-    printf("\n Initialization of SCALER 560\n");
+    printf("V560 scaler initialization\n");
     status_init *= init_scaler560(BHandle);
     if (status_init != 1) 
       {
@@ -143,7 +194,7 @@ int main(int argc, char** argv)
   */
   if(TDC1190 || TDC1190_2) 
     {
-      printf("\n Initialization of TDC1190 \n");
+      printf("V1290 TDC initialization\n");
       status_init *= init_tdc1190(BHandle);
       if(status_init!=1)
 	{
@@ -156,7 +207,7 @@ int main(int argc, char** argv)
 
   /* ADC 265 initialization */
   if(ADC265) {
-    printf("\n Initialization of ADC 265\n");
+    printf("V265 ADC initialization\n");
     status_init *= init_adc265(BHandle);
     if (status_init != 1) 
       {
@@ -167,7 +218,7 @@ int main(int argc, char** argv)
 
   /* Fast TDC initialization */
   if(TDC488A) {
-    printf("\n Initialization of TDCV488A \n");
+    printf("Initialization of TDCV488A \n");
     status_init *= init_tdcV488A(BHandle);
     if(status_init!=1) {
 	printf("Error in tdcV488A initialization.... STOP!\n");
@@ -177,7 +228,7 @@ int main(int argc, char** argv)
   
   /* ADC 792 initialization */
   if(ADC792) {
-    printf("\n Initialization of ADC 792\n");
+    printf("V792 ADC initialization\n");
     status_init *= init_adc792(BHandle,0); //Initialize the first card
     if (status_init != 1) 
       {
@@ -186,7 +237,20 @@ int main(int argc, char** argv)
       }
   }
 
-  printf("\n VME and modules initialization completed \n\n Start data acquisition\n");
+  /* IO 262 initialization */
+  if (IO262)
+    {
+      printf("V262 IO register initialization\n");
+      status_init *=OutCh_V262(BHandle,0,!beam_trigger); 
+      printf("V262: trigger beam is %d\n",beam_trigger);
+      if (status_init != 1) 
+	{
+	  printf("Error setting the beam trigger veto... STOP!\n");
+	  return(1);
+	}
+    }
+
+  printf("================================================\nVME and modules initialization completed\n\nStart data acquisition\n================================================\n");
   
 
   /* Output file initialization  */
@@ -219,13 +283,14 @@ int main(int argc, char** argv)
 
   /*  Start counting: check that the scaler's channels are empty */
   
-  gettimeofday(&tempo1, NULL);
-  tempo_start = ((double)tempo1.tv_sec) + ((double)tempo1.tv_usec)/1000000;
-  tempo_last_event = tempo_start;
 
-  tempo_last = tempo_start;
-  time_start = tempo_start;
-  time_last = tempo_start;
+
+  /* tempo_start = ((double)tv1.tv_sec) + ((double)tv1.tv_usec)/1000000; */
+  /* tempo_last_event = tempo_start; */
+
+  /* tempo_last = tempo_start; */
+  /* time_start = tempo_start; */
+  /* time_last = tempo_start; */
   
   int in_evt_read = 10; 
   bool read_boards,read_scaler;
@@ -239,8 +304,11 @@ int main(int argc, char** argv)
 
   int nreadout=0;
 
-  /* Start of the event collection cycle */
+  //Get the start time!
+  gettimeofday(&tv1, NULL);
+  tv2=tv1;
 
+  /* Start of the event collection cycle */
   while(nevent<(int)max_evts)
     {
       board_num = 0;
@@ -273,6 +341,14 @@ int main(int argc, char** argv)
 	  }
       }
 
+
+      if (!beam_trigger && IO262 && pedestal_freq>0)
+	{
+	  float usec_delay=1.E6/(pedestal_freq);
+	  usleep(usec_delay);
+	  daq_status=PulseCh_V262(BHandle,0);
+	}
+
       /* Wait for the trigger signal from the IO */
       if (V1718 && !IO513) {
 	while(!trigger)
@@ -295,20 +371,24 @@ int main(int argc, char** argv)
 	  }
       }
 
-      /* measure the daq time */
+      /* Attach a TIMESPAMP to the event */
       gettimeofday(&tv, NULL);
-      tempo_now = ((double)tv.tv_sec) + ((double)tv.tv_usec)/1000000;
-      tempo_now_int = (tv.tv_sec)*1000000 + (tv.tv_usec);
+      /* tempo_now = ((double)tv.tv_sec) + ((double)tv.tv_usec)/1000000; */
+      /* tempo_now_int = (tv.tv_sec)*1000000 + (tv.tv_usec); */
 
-      elapsed_seconds = tempo_now - tempo_last_event;
-      n_microseconds =( (int) (elapsed_seconds*1000000));
-      n_microseconds_dt =( (int) (elapsed_seconds_dt*1000000));
-      tempo_last_event = tempo_now;
+      /* elapsed_seconds = tempo_now - tempo_last_event; */
+
+      n_microseconds = timevaldiff(&tv1,&tv);
+      n_microseconds_dt = elapsed_microseconds_dt;
+
+      /* tempo_last_event = tempo_now; */
 
       my_header_OD.push_back(n_microseconds);
       my_header_OD.push_back(n_microseconds_dt);
+      my_header_OD.push_back(gettimestamp(&tv)); //timestamp(msec wrt to reference time)
+
       if(d_value) cout<<"Dist btw evts:: "<<n_microseconds<<" Dist btw start/end:: "<<n_microseconds_dt<<endl;
-      my_header_OD.push_back(tempo_now_int);
+      tv1=tv; //Update last time
 
       headWords = my_header_OD.size();
 
@@ -327,8 +407,8 @@ int main(int argc, char** argv)
 	if(TDC1190) {
 	  my_tdc_OD.clear();
 	  my_tdc_WD.clear();
-	  //	  my_tdc_OD = readNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD);
-	  my_tdc_OD = readFastNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD,true);
+	  my_tdc_OD = readNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD);
+	  //my_tdc_OD = readFastNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD,true);
 	  if(d_value) 
 	    cout<<"Filled Word Vector:: "<<my_tdc_WD.size()<<" "<<my_tdc_OD.size()<<endl;
 	  if(daq_status!=1){
@@ -717,28 +797,22 @@ int main(int argc, char** argv)
 	return(1); 
       }
     
-    
-
-
       //      if(IO513) daq_status = read_V513_old(BHandle, IO_value);
       
       if((nevent-(p_value*((int)(nevent/p_value))))==0) 
 	{
-	  gettimeofday(&tempo1, NULL);
-	  time_now = ((double)tempo1.tv_sec) + 
-	    ((double)tempo1.tv_usec)/1000000;
-	  elapsed_seconds = time_now-time_start;
-	  delta_seconds   = time_now-time_last;
-	  time_last = time_now;
-	  
-	  if(delta_seconds) rate = ((double)p_value)/delta_seconds;
+	  delta_micro_seconds = timevaldiff(&tv2,&tv);
+
+	  if(delta_micro_seconds) rate = ((double)p_value)/(double)delta_micro_seconds;
 	  printf("_____ Event number: %d El time (s): %f Freq (Hz): %lf ______\n",
-		 nevent,delta_seconds,rate);
+		 nevent,(float)delta_micro_seconds/1000000.,rate*1000000.);
+
 	  if(!access("acq.stop",F_OK)) {
 	    cout<<"Stopped run from acq.stop : deleting acq.stop file"<<endl;
 	    nevent = max_evts;
 	    remove("acq.stop");
 	  }
+	  tv2=tv;
 	}     
       
 
@@ -762,9 +836,8 @@ int main(int argc, char** argv)
       /* 	  } */
       /* } */
 
-      gettimeofday(&tv, NULL);
-      tempo_aftwr = ((double)tv.tv_sec) + ((double)tv.tv_usec)/1000000;
-      elapsed_seconds_dt = tempo_aftwr - tempo_now;
+      gettimeofday(&tv3, NULL);
+      elapsed_microseconds_dt = timevaldiff(&tv,&tv3); //time to readout the event
 
     }
 
@@ -794,7 +867,7 @@ int main(int argc, char** argv)
 }
 
 
-// Read FAST (no decoding)
+// Write FAST event (no decoding)
 unsigned short writeFastEvent(vector<int> wriD, ofstream *Fouf)
 {
 

@@ -24,10 +24,10 @@ unsigned short init_tdc1190(int32_t BHandle)
   unsigned long address;
   unsigned short data;
   short  status; int caenst;
-  int WindowWidth =  0xC;    /* Value * 25ns : 0xC --> 300ns*/
-  int WindowOffset = -0xC;    /* Time Window Offset */
+  int WindowWidth =  0x18;    /* Value * 25ns : 0x18 --> 600ns*/
+  int WindowOffset = -0x18;    /* Time Window Offset */
   unsigned long trMode = 0x0000;
-  status = 1;
+
 
   addrs.clear();
   addrs.push_back(TDC1190_ADDRESS);
@@ -35,46 +35,28 @@ unsigned short init_tdc1190(int32_t BHandle)
 
   //Initialize all the boards
   for(int iBo = 0; iBo<NUMBOARDS; iBo++) {
+    status = 1;
     /* 0 passo: card reset*/
     /* Edge detection rising by default after reset*/
     
     //software Clear
     address = addrs.at(iBo) + 0x1016;
-    data = 0x1;
+    data = 0x0;
     
     //  status *= vme_write_dt(address,&data,AD32,D16);
     caenst = CAENVME_WriteCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
-    status = 1-caenst;
+    status *= 1-caenst;
     if(td1190_debug) printf("Issued a Software Clear. Status:%d\n",status);
     
-    sleep(2); /* wait until the inizialization is complete */
+    sleep(1); /* wait until the inizialization is complete */
 
-    address = addrs.at(iBo) + 0x1000;
-    data = 0x0;
 
-    caenst = CAENVME_WriteCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
-    status = 1-caenst;
-    if(td1190_debug) printf("Let's see..:%d\n",status);
-
-    address = addrs.at(iBo) + 0x1024;
-    data = 0xA;
-
-    caenst = CAENVME_WriteCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
-    status = 1-caenst;
-    if(td1190_debug) printf("Let's see again..:%d\n",status);
     
     /* 0 step: debugging. Printout the status register */
     
-    if(td1190_debug) {
-      address = TDC1190_ADDRESS + 0x1002;
-      //status *= vme_read_dt(address,&data,AD32,D16);
-      caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
-      status = 1-caenst;
-      printf("Reading status register. Status:%u\t%X\n",status,(unsigned int)data);
-    }
 
-    //Load defaults
-    status *=opwriteTDC(BHandle, addrs.at(iBo), 0x0500);
+    /* //Load defaults */
+    /* status *=opwriteTDC(BHandle, addrs.at(iBo), 0x0500); */
 
     /* I step: set TRIGGER Matching mode via OPCODE 00xx */
     if(td1190_debug) printf("Going to set Tr mode :%d\n",(int)trMode);
@@ -107,13 +89,13 @@ unsigned short init_tdc1190(int32_t BHandle)
 
 
     /* IV step: enable channel 0 & 1*/
-    /* data = 0x4300; */
-    /* status *=opwriteTDC(BHandle, addrs.at(iBo), data);  */
+    data = 0x4300;
+    status *=opwriteTDC(BHandle, addrs.at(iBo), data);
 
-    /* data = 0x4000; */
-    /* status *=opwriteTDC(BHandle, addrs.at(iBo), data);  */
-    /* data = 0x4001; */
-    /* status *=opwriteTDC(BHandle, addrs.at(iBo), data);  */
+    data = 0x4000;
+    status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    data = 0x4001;
+    status *=opwriteTDC(BHandle, addrs.at(iBo), data);
 
     //Max 128 hits per event
     /* data = 0x3300; */
@@ -121,18 +103,15 @@ unsigned short init_tdc1190(int32_t BHandle)
     /* data = 0x8; */
     /* status *=opwriteTDC(BHandle, addrs.at(iBo), data);  */
 
-
-
-
     /* III-bis step: enable BLT mode */
-    data = 0x1100;
-    status *=opwriteTDC(BHandle, addrs.at(iBo), 0x1100); 
-    status *=opwriteTDC(BHandle, addrs.at(iBo), WindowOffset);
+    /* data = 0x1100; */
+    /* status *=opwriteTDC(BHandle, addrs.at(iBo), 0x1100);  */
+    /* status *=opwriteTDC(BHandle, addrs.at(iBo), WindowOffset); */
 
     
     /* IV step: Enable trigger time subtraction */
     data = 0x1400;
-    status *=opwriteTDC(BHandle, addrs.at(iBo), 0x1400); 
+    status *=opwriteTDC(BHandle, addrs.at(iBo), 0x1400);
     
     //Disable tr time subtr
     //  status *=opwriteTDC(BHandle,0x1500); 
@@ -144,13 +123,36 @@ unsigned short init_tdc1190(int32_t BHandle)
     /* status = 1-caenst; */
     
     if(td1190_debug) printf("Settings Status:: %d\n",status);
+
+    /* //status *= vme_read_dt(address,&data,AD32,D16); */
+    address = addrs.at(iBo) + 0x1000;
+    /* caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16); */
+    /* status = 1-caenst; */
+
+    /* data |= 0x0001; */
+    /* data |= 0x0010; */
+
+    /* caenst = CAENVME_WriteCycle(BHandle,address,&data,cvA24_U_DATA,cvD16); */
+    /* status = 1-caenst; */
+    /* if(td1190_debug) printf("Let's see..:%d\n",status); */
+
+    /* address = addrs.at(iBo) + 0x1024; */
+    /* data = 0x1; */
+
+    /* caenst = CAENVME_WriteCycle(BHandle,address,&data,cvA24_U_DATA,cvD16); */
+    /* status = 1-caenst; */
+    /* if(td1190_debug) printf("Let's see again..:%d\n",status); */
+
+    caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
+    status *= 1-caenst;
+    printf("Reading status register. Status:%u\t%X\n",status,(unsigned int)data);
     
 
-    /* TDC Event Reset */
-    address = addrs.at(iBo) + 0x1024;  data=0x1;
-    //  status *= vme_write_dt(address,&data,AD32,D16);
-    caenst = CAENVME_WriteCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
-    status = 1-caenst;
+    /* /\* TDC Event Reset *\/ */
+    /* address = addrs.at(iBo) + 0x1018;  data=0x1; */
+    /* //  status *= vme_write_dt(address,&data,AD32,D16); */
+    /* caenst = CAENVME_WriteCycle(BHandle,address,&data,cvA24_U_DATA,cvD16); */
+    /* status = 1-caenst; */
     if(td1190_debug) printf("Setup Done :: %d\t. Ready for acquisition.\n",status);
   }
 
@@ -331,7 +333,9 @@ vector<int> readEventTDC(int32_t BHandle, int idB, int status) {
 /*-------------------------------------------------------------*/
 
 vector<int> readNEventsTDC(int32_t BHandle, int idB, int status, int nevents, vector<int> &outW) {
-  unsigned long data,address,geo_add,measurement,channel,trailing;
+  unsigned int address,geo_add,measurement,channel,trailing;
+  int data;
+
   double tdc_time;
   int dataReady = 0; int TRG_matched = 0, evt_num = 0, tra_stat = 0;
   int caenst; int TIMEOUT = 10000;
@@ -382,19 +386,20 @@ vector<int> readNEventsTDC(int32_t BHandle, int idB, int status, int nevents, ve
   if(dataReady) {
     while(tmpev<nevents) {
       tmpW = 0;
-      address= addrs.at(idB) + 0x0;
+      address= addrs.at(idB);
       //status *= vme_read_dt(address,&data,AD32,D32);
       caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD32);
       status = 1-caenst;
-      if(td1190_debug) printf("Read New event!\n");
-      glb_hea = 0;
-      if( (data>>27) & 0x8 ) {
-	glb_hea = 1;
-	geo_add = data>>27;
-	evt_num = data>>5 & 0x3fffff;
-	outD.push_back((int) evt_num);
-	tmpW++;
-      }
+      std::cout << "GGG " << (data>>27) << std::endl;
+      /* glb_hea = 0; */
+      /* if( (data>>27) & 0x8 ) { */
+      glb_hea = 1;
+      geo_add = data & 0x1F;
+      evt_num = data>>5 & 0x3fffff;
+      outD.push_back((int) evt_num);
+      if(td1190_debug) printf("Read new event %d\n",evt_num);
+      tmpW++;
+      /* } */
       
       //      cout<<"First read::  "<<glb_hea<<" "<<evt_num<<endl;
       
@@ -427,8 +432,8 @@ vector<int> readNEventsTDC(int32_t BHandle, int idB, int status, int nevents, ve
 	    if(td1190_debug) printf("TDC header:: %X\n",(unsigned int)data);
 	  } else if(!tdc_mea) {
 	    /* TDC measurement!*/
-	    measurement = data & 0x3ffff;
-	    channel = (data>>19) & 0x7f;
+	    measurement = data & 0x1fffff;
+	    channel = (data>>21) & 0x1f;
 	    trailing = (data>>26) & 0x1;
 	    tdc_time = (double)measurement/10;
 	    //	  if(td1190_debug)
@@ -462,14 +467,14 @@ vector<int> readFastNEventsTDC(int32_t BHandle, int idB, int status, int nevents
      2) Tdc evt, ch, time
      3) Trailer + error
   */
-  int nbytes_tran = 0;
+  int nbytes_tran = 99999;
   int tdc_tst = 0;
   int glb_tra = 0;
   int nTry (0);
   int wr; int maxW = 75;
   /* if(idB == 1) maxW =  75; //Second TDC has only 16 channels */
 
-  unsigned int dataV[maxW*nevents];
+  int dataV[maxW*nevents];
   if(idB<0 || idB>NUMBOARDS-1) {
     cout<<" Accssing Board number"<<idB<<" while only "<<NUMBOARDS<<" are initialized!!! Check your configuration!"<<endl;
     status = 0;
@@ -516,30 +521,27 @@ vector<int> readFastNEventsTDC(int32_t BHandle, int idB, int status, int nevents
     //    wr = maxW*4*nevents; 
     wr = sizeof(dataV);
     
-    //Performing BLT access
-    for (int i(0);i<10;i++)
+    //Performing BLT access (assuming BERR is enabled, check nbytes_transf=0 to exit the read cycle
+    int nWordsRead=0;
+    while(nbytes_tran>0 && nWordsRead<wr)
       {
-	caenst = CAENVME_BLTReadCycle(BHandle,address,dataV+i,wr,
+	caenst = CAENVME_FIFOBLTReadCycle(BHandle,address,dataV+nWordsRead,wr,
 				      cvA24_U_DATA,cvD32,&nbytes_tran);
 	status *= (1-caenst); 
-	sleep(1);
-	if(td1190_debug) printf("Read events with size %d %d %X\n",nbytes_tran,sizeof(dataV),dataV[i]);
+	if(td1190_debug) printf("Read events with size %d %d %X\n",nbytes_tran,sizeof(dataV),dataV[nWordsRead]);
+	nWordsRead+=nbytes_tran/4;
       }
     
     
-    //      caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD32);
-    //      status = 1-caenst;
-    
-
-
     //Vector dump into output
-    idV = 0; while(idV<(maxW)*nevents) {
+    idV = 0; while(idV<std::min(nWordsRead,wr)) {
 
       /* if (td1190_debug) */
       /* 	std::cout << "TDC MEB word " << idV << ":" << dataV[idV] << std::endl; */
       geo_add = dataV[idV]>>27;
       tdc_tst = geo_add & 0x1f ;
 
+      std::cout << "TDC WORD TYPE " << tdc_tst << std::endl;
       if(tdc_tst == 0x18)  {
 	idV++;  
 	continue;
@@ -548,13 +550,12 @@ vector<int> readFastNEventsTDC(int32_t BHandle, int idB, int status, int nevents
       /* if(td1190_debug)  */
       /* 	printf("Found word: %d %lx :: %lx %d\n",idV,dataV[idV],geo_add,tdc_tst);  */
 
-      glb_tra = (dataV[idV]>>30) & 0x2 ;
 
       if(tdc_tst == 0x8 ) {
 	tmpW = 0;
 	evt_num = dataV[idV]>>5 & 0x3fffff;
-	/* if(td1190_debug)  */
-	/*   printf("Found GLB header: %d %d %lx :: %d\n",idB,idV,dataV[idV],evt_num);  */
+	/* if(td1190_debug) */
+	/*   printf("Found GLB header: %d %d %lx :: %d\n",idB,idV,dataV[idV],evt_num); */
 
 	outD.push_back((int) evt_num);
 	if(td1190_debug) 
@@ -569,8 +570,8 @@ vector<int> readFastNEventsTDC(int32_t BHandle, int idB, int status, int nevents
 
       if(tdc_tst == 0x10) {
 	/* Global Trailer!*/
-	/* if(td1190_debug)  */
-	/*   printf("Global trailer:: %d %X\n",idB,(unsigned int)dataV[idV]); */
+	if(td1190_debug)
+	  printf("Global trailer:: %d %X\n",idB,(unsigned int)dataV[idV]);
 	tra_stat = dataV[idV]>>24 & 0x1;
 	outD.push_back((int) tra_stat);
 	if(td1190_debug) 
@@ -581,15 +582,15 @@ vector<int> readFastNEventsTDC(int32_t BHandle, int idB, int status, int nevents
 
       if(tdc_tst == 0x3) {
 	/* TDC Trailer!*/
-	/* if(td1190_debug)  */
-	/*   printf("TDC trailer:: %d %X\n",idB,(unsigned int)dataV[idV]); */
+	if(td1190_debug)
+	  printf("TDC trailer:: %d %X\n",idB,(unsigned int)dataV[idV]);
 
       } 
 
       if(tdc_tst == 0x1) {
 	/* TDC Header!*/
-	/* if(td1190_debug)  */
-	/*   printf("TDC header:: %d %X\n",idB,(unsigned int)dataV[idV]); */
+	if(td1190_debug)
+	  printf("TDC header:: %d %X\n",idB,(unsigned int)dataV[idV]);
       } 
 
       if(tdc_tst == 0x0) {
@@ -605,22 +606,23 @@ vector<int> readFastNEventsTDC(int32_t BHandle, int idB, int status, int nevents
 	}
 	tdc_time = (double)measurement/10;
 
-	/* if(td1190_debug)  */
-	/*   printf("TDC %d Measurement:: %d %d %d\n",(int)idB,(int)evt_num,(int)channel,(int)measurement); */
-	outD.push_back((int) evt_num); tmpW++;
-	outD.push_back((int) channel); tmpW++;
-	outD.push_back((int) measurement); tmpW++;
-	/* if(td1190_debug)  */
-	/*   cout<<"eve:: "<<evt_num<<" "<<channel<<" "<<measurement<<endl; */
+	if(td1190_debug)
+	  printf("TDC %d Measurement:: %d %d %d\n",(int)idB,(int)evt_num,(int)channel,(int)measurement);
+	/* outD.push_back((int) evt_num); tmpW++; */
+	/* outD.push_back((int) channel); tmpW++; */
+	/* outD.push_back((int) measurement); tmpW++; */
+	if(td1190_debug)
+	  cout<<"eve:: "<<evt_num<<" "<<channel<<" "<<measurement<<endl;
       }
 
-      //      outD.push_back((int)dataV[idV]); 
+      outD.push_back((int)dataV[idV]); 
       idV++;  
     }
 
   }
+
   //Protection against timeout.
-  usleep(20);
+  /* usleep(20); */
   return outD;
 }
 
