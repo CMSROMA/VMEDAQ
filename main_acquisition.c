@@ -116,12 +116,10 @@ int main(int argc, char** argv)
       return(1); 
     }
 
-  /* double tempo_last=0., time_start=0., time_last=0., delta_seconds=0., time_now=0., tempo_aftwr=0.; */
-  /* double tempo_start=0., tempo_now =0., tempo_last_event=0.; */
+
+  struct timeval tv,tv1,tv2,tv3;
   int    n_microseconds = 0, n_microseconds_dt = 0, elapsed_microseconds_dt=0, delta_micro_seconds=0; 
 
-  /* int tempo_now_int = 0; */
-  struct timeval tv,tv1,tv2,tv3;
 
   printf("n_evts(max) = %d\n", n_value);
   if (f_value != NULL) printf("file = \"%s\"\n", f_value);
