@@ -281,28 +281,26 @@ int main(int argc, char** argv)
 
   myOut.open(f_value,ios::out);
 
-  /*  Start counting: check that the scaler's channels are empty */
-  
-
-
-  /* tempo_start = ((double)tv1.tv_sec) + ((double)tv1.tv_usec)/1000000; */
-  /* tempo_last_event = tempo_start; */
-
-  /* tempo_last = tempo_start; */
-  /* time_start = tempo_start; */
-  /* time_last = tempo_start; */
   
   int in_evt_read = 10; 
-  bool read_boards,read_scaler;
   int hm_evt_read; 
+
+  bool read_boards,read_scaler;
+
   bool hiScale = true;
 
   //Clear of header info
   my_header_OD.clear();
 
-  status_init *= reset_nim_scaler_1718(BHandle) ;
-
   int nreadout=0;
+
+  /*  Start counting: check that the scaler's channels are empty */
+  status_init *= reset_nim_scaler_1718(BHandle) ;
+  if (status_init != 1) 
+    {
+      printf("Error resetting the V1718... STOP!\n");
+      return(1);
+    }
 
   //Get the start time!
   gettimeofday(&tv1, NULL);
@@ -373,15 +371,8 @@ int main(int argc, char** argv)
 
       /* Attach a TIMESPAMP to the event */
       gettimeofday(&tv, NULL);
-      /* tempo_now = ((double)tv.tv_sec) + ((double)tv.tv_usec)/1000000; */
-      /* tempo_now_int = (tv.tv_sec)*1000000 + (tv.tv_usec); */
-
-      /* elapsed_seconds = tempo_now - tempo_last_event; */
-
       n_microseconds = timevaldiff(&tv1,&tv);
       n_microseconds_dt = elapsed_microseconds_dt;
-
-      /* tempo_last_event = tempo_now; */
 
       my_header_OD.push_back(n_microseconds);
       my_header_OD.push_back(n_microseconds_dt);
@@ -844,15 +835,15 @@ int main(int argc, char** argv)
   std::cout << "++++++ Final run statistics +++++++" << std::endl;
   tmpscaD.clear();
   tmpscaD = read_scaler560Vec(BHandle,daq_status); 
-  if(!tmpscaD.size())  cout<<" Warning:: Scaler Read :: "<< tmpscaD.size() << std::endl;
-  for (unsigned int i(0);i<tmpscaD.size();++i)
-    std::cout << "V560:: channel " << i << " has " << tmpscaD[i] << " counts" << std::endl;
-
   if (daq_status != 1) 
     {
       printf("\nError reading SCALER 560... STOP!\n");
       return(1);
     }
+  if(!tmpscaD.size())  cout<<" Warning:: Scaler Read :: "<< tmpscaD.size() << std::endl;
+  for (unsigned int i(0);i<tmpscaD.size();++i)
+    std::cout << "V560:: channel " << i << " has " << tmpscaD[i] << " counts" << std::endl;
+
 
   /* Output File finalization */  
   printf("\n Closing output file!\n");
