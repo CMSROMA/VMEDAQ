@@ -32,6 +32,26 @@
 #define update_scaler 0
 using namespace std;
 
+time_t ref_time;
+
+long gettimestamp(struct timeval *time)
+{
+  long time_msec;
+  std::cout << time->tv_sec << ","  << ref_time << std::endl;
+  time_msec=(time->tv_sec-ref_time)*1000;
+  time_msec+=time->tv_usec/1000;
+  return time_msec;
+}
+
+long timevaldiff(struct timeval *starttime, struct timeval *finishtime)
+{
+  long usec;
+  usec=(finishtime->tv_sec-starttime->tv_sec)*1000000;
+  usec+=(finishtime->tv_usec-starttime->tv_usec);
+  return usec;
+}
+
+
 int main(int argc, char** argv)
 {
   unsigned long  max_evts=9000;
@@ -40,15 +60,28 @@ int main(int argc, char** argv)
   int i; 
   double rate;
   int32_t BHandle(0);
+
   int n_value = 0; int p_value = 50;
   //float b_value = 0.0;
   char* f_value = "dumb";
+
   ofstream myOut;
+
   int d_value = 0;
+
   float pedestal_freq=0;
   bool beam_trigger=0;
 
-  //a.out -a 3 -b 5.6 -c "I am a string" -d 222 111
+  //Reference time 2014-04-01 00:00:00
+  tm ref_date;
+  ref_date.tm_hour = 0;
+  ref_date.tm_min = 0;
+  ref_date.tm_sec = 0;
+  ref_date.tm_year = 114;
+  ref_date.tm_mon = 3;
+  ref_date.tm_mday = 1;
+  ref_time=mktime(&ref_date);
+
   for (i = 1; i < argc; i++) {
     /* Check for a switch (leading "-"). */
     if (argv[i][0] == '-') {
@@ -83,14 +116,12 @@ int main(int argc, char** argv)
       return(1); 
     }
 
-  double tempo_last=0., time_start=0., time_last=0., delta_seconds=0., time_now=0., tempo_aftwr=0.;
-  double tempo_start=0., tempo_now =0., tempo_last_event=0.;
-  double elapsed_seconds=0., elapsed_seconds_dt=0.;
-  int    n_microseconds = 0, n_microseconds_dt = 0;
-  int tempo_now_int = 0;
-  struct timeval tv;
+  /* double tempo_last=0., time_start=0., time_last=0., delta_seconds=0., time_now=0., tempo_aftwr=0.; */
+  /* double tempo_start=0., tempo_now =0., tempo_last_event=0.; */
+  int    n_microseconds = 0, n_microseconds_dt = 0, elapsed_microseconds_dt=0, delta_micro_seconds=0; 
 
-  struct timeval tempo1;
+  /* int tempo_now_int = 0; */
+  struct timeval tv,tv1,tv2,tv3;
 
   printf("n_evts(max) = %d\n", n_value);
   if (f_value != NULL) printf("file = \"%s\"\n", f_value);
@@ -252,13 +283,14 @@ int main(int argc, char** argv)
 
   /*  Start counting: check that the scaler's channels are empty */
   
-  gettimeofday(&tempo1, NULL);
-  tempo_start = ((double)tempo1.tv_sec) + ((double)tempo1.tv_usec)/1000000;
-  tempo_last_event = tempo_start;
 
-  tempo_last = tempo_start;
-  time_start = tempo_start;
-  time_last = tempo_start;
+
+  /* tempo_start = ((double)tv1.tv_sec) + ((double)tv1.tv_usec)/1000000; */
+  /* tempo_last_event = tempo_start; */
+
+  /* tempo_last = tempo_start; */
+  /* time_start = tempo_start; */
+  /* time_last = tempo_start; */
   
   int in_evt_read = 10; 
   bool read_boards,read_scaler;
@@ -272,6 +304,9 @@ int main(int argc, char** argv)
 
   int nreadout=0;
 
+  //Get the start time!
+  gettimeofday(&tv1, NULL);
+  tv2=tv1;
 
   /* Start of the event collection cycle */
   while(nevent<(int)max_evts)
@@ -329,7 +364,6 @@ int main(int argc, char** argv)
 	}
 	daq_status *= setbusy_1718(BHandle,DAQ_TRIG_ACK); //acknowledge of the trigger to latch the trigger bit
 
-
       } else if (V1718 && IO513) {
 	while(!trigger)
 	  {
@@ -339,18 +373,22 @@ int main(int argc, char** argv)
 
       /* Attach a TIMESPAMP to the event */
       gettimeofday(&tv, NULL);
-      tempo_now = ((double)tv.tv_sec) + ((double)tv.tv_usec)/1000000;
-      tempo_now_int = (tv.tv_sec)*1000000 + (tv.tv_usec);
+      /* tempo_now = ((double)tv.tv_sec) + ((double)tv.tv_usec)/1000000; */
+      /* tempo_now_int = (tv.tv_sec)*1000000 + (tv.tv_usec); */
 
-      elapsed_seconds = tempo_now - tempo_last_event;
-      n_microseconds =( (int) (elapsed_seconds*1000000));
-      n_microseconds_dt =( (int) (elapsed_seconds_dt*1000000));
-      tempo_last_event = tempo_now;
+      /* elapsed_seconds = tempo_now - tempo_last_event; */
+
+      n_microseconds = timevaldiff(&tv1,&tv);
+      n_microseconds_dt = elapsed_microseconds_dt;
+
+      /* tempo_last_event = tempo_now; */
 
       my_header_OD.push_back(n_microseconds);
       my_header_OD.push_back(n_microseconds_dt);
+      my_header_OD.push_back(gettimestamp(&tv)); //timestamp(msec wrt to reference time)
+
       if(d_value) cout<<"Dist btw evts:: "<<n_microseconds<<" Dist btw start/end:: "<<n_microseconds_dt<<endl;
-      my_header_OD.push_back(tempo_now_int);
+      tv1=tv; //Update last time
 
       headWords = my_header_OD.size();
 
@@ -763,21 +801,18 @@ int main(int argc, char** argv)
       
       if((nevent-(p_value*((int)(nevent/p_value))))==0) 
 	{
-	  gettimeofday(&tempo1, NULL);
-	  time_now = ((double)tempo1.tv_sec) + 
-	    ((double)tempo1.tv_usec)/1000000;
-	  elapsed_seconds = time_now-time_start;
-	  delta_seconds   = time_now-time_last;
-	  time_last = time_now;
-	  
-	  if(delta_seconds) rate = ((double)p_value)/delta_seconds;
+	  delta_micro_seconds = timevaldiff(&tv2,&tv);
+
+	  if(delta_micro_seconds) rate = ((double)p_value)/(double)delta_micro_seconds;
 	  printf("_____ Event number: %d El time (s): %f Freq (Hz): %lf ______\n",
-		 nevent,delta_seconds,rate);
+		 nevent,(float)delta_micro_seconds/1000000.,rate*1000000.);
+
 	  if(!access("acq.stop",F_OK)) {
 	    cout<<"Stopped run from acq.stop : deleting acq.stop file"<<endl;
 	    nevent = max_evts;
 	    remove("acq.stop");
 	  }
+	  tv2=tv;
 	}     
       
 
@@ -801,9 +836,8 @@ int main(int argc, char** argv)
       /* 	  } */
       /* } */
 
-      gettimeofday(&tv, NULL);
-      tempo_aftwr = ((double)tv.tv_sec) + ((double)tv.tv_usec)/1000000;
-      elapsed_seconds_dt = tempo_aftwr - tempo_now;
+      gettimeofday(&tv3, NULL);
+      elapsed_microseconds_dt = timevaldiff(&tv,&tv3); //time to readout the event
 
     }
 
