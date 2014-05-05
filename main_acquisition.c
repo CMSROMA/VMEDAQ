@@ -37,7 +37,6 @@ time_t ref_time;
 long gettimestamp(struct timeval *time)
 {
   long time_msec;
-  std::cout << time->tv_sec << ","  << ref_time << std::endl;
   time_msec=(time->tv_sec-ref_time)*1000;
   time_msec+=time->tv_usec/1000;
   return time_msec;
@@ -795,11 +794,12 @@ int main(int argc, char** argv)
 	  if(delta_micro_seconds) rate = ((double)p_value)/(double)delta_micro_seconds;
 	  printf("_____ Event number: %d El time (s): %f Freq (Hz): %lf ______\n",
 		 nevent,(float)delta_micro_seconds/1000000.,rate*1000000.);
+          fflush(stdout);
 
-	  if(!access("acq.stop",F_OK)) {
+	  if(!access("/home/cmsdaq/DAQ/VMEDAQ/acq.stop",F_OK)) {
 	    cout<<"Stopped run from acq.stop : deleting acq.stop file"<<endl;
 	    nevent = max_evts;
-	    remove("acq.stop");
+	    remove("/home/cmsdaq/DAQ/VMEDAQ/acq.stop");
 	  }
 	  tv2=tv;
 	}     

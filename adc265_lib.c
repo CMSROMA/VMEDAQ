@@ -78,9 +78,9 @@ vector<int> read_adc265(int32_t BHandle, int status)
 /*
    Then read the ADC265 data fifo
 */
-#ifdef ADC265_DEBUG
-      printf("+++++++++++++++++++++++++++++++\n");
-#endif
+/* #ifdef ADC265_DEBUG */
+/*       printf("+++++++++++++++++++++++++++++++\n"); */
+/* #endif */
       address = ADC265_ADDRESS + adc265_shift.datareg;
       for(mm=0;mm<2*ADC265_CHANNEL;mm++)
 	{
@@ -93,10 +93,11 @@ vector<int> read_adc265(int32_t BHandle, int status)
 	    {
 	      canale = (int) ((data & adc265_bitmask.channel)>>13);
 	      risultato = (int) (data & adc265_bitmask.convdata);
+	      printf("canale=%d  risultato=%d\n",canale,risultato); 
 	      ADC265_value[canale] = (int)data;
-#ifdef ADC265_DEBUG
-	      printf("canale=%d  risultato=%d\n",canale,risultato);
-#endif
+/* #ifdef ADC265_DEBUG */
+/* 	      
+/* #endif */
 	    }
 	}
       for(int iC = 0; iC<8; iC++) {
@@ -147,9 +148,9 @@ vector<int> read_Nadc265(int32_t BHandle, int nevts, int status)
 /*
    Then read the ADC265 data fifo
 */
-#ifdef ADC265_DEBUG
-      printf("+++++++++++ ADC 265 DEBUG +++++++++\n");
-#endif
+/* #ifdef ADC265_DEBUG */
+/*       printf("+++++++++++ ADC 265 DEBUG +++++++++\n"); */
+/* #endif */
       address = ADC265_ADDRESS + adc265_shift.datareg;
 
       for(unsigned int iev(0); iev < nevts; ++iev)
@@ -163,12 +164,12 @@ vector<int> read_Nadc265(int32_t BHandle, int nevts, int status)
 	      //	  printf("mm=%d e adc265_range=%d\n",mm,adc265_range);
 	      if(adc265_range==0)
 		{
-#ifdef ADC265_DEBUG
 		  canale = (int) ((data & adc265_bitmask.channel)>>13);
 		  risultato = (int) (data & adc265_bitmask.convdata);
-		  ADC265_value[canale] = (int)data;
-		  printf("ADC265::DATA::evbuff=%d channel=%d  value=%d\n",iev,canale,risultato);
-#endif
+  		  ADC265_value[canale] = (int)data; 
+/* #ifdef ADC265_DEBUG */
+/* 		  printf("ADC265::DATA::evbuff=%d channel=%d  value=%d\n",iev,canale,risultato); */
+/* #endif */
 		}
 	    }
 	  for(int iC = 0; iC<8; iC++) {
