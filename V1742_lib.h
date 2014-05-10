@@ -147,5 +147,14 @@ typedef struct WaveDumpRun_t {
 /* /\* Function prototypes *\/ */
 /* int ParseConfigFile(FILE *f_ini, WaveDumpConfig_t *WDcfg); */
 
+/*! \fn      int ProgramDigitizer(int handle, WaveDumpConfig_t WDcfg) 
+*   \brief   configure the digitizer according to the parameters read from
+*            the cofiguration file and saved in the WDcfg data structure
+*            
+*   \param   handle   Digitizer handle
+*   \param   WDcfg:   WaveDumpConfig data structure
+*   \return  0 = Success; negative numbers are error codes
+*/
+int ProgramDigitizer(int handle, WaveDumpConfig_t WDcfg);
 
 #endif /* _WAVEDUMP__H */
