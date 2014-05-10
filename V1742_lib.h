@@ -21,9 +21,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-//#include <fstream.h>
-#include <CAENDigitizer.h>
-#include <CAENDigitizerType.h>
+
+/* //#include <fstream.h> */
+/* #include "WDconfig.h" */
+
 
 /* #ifdef WIN32 */
 
@@ -50,7 +51,7 @@
 /* #endif */
 
 /* #ifdef LINUX */
-#define DEFAULT_CONFIG_FILE  "/etc/wavedump/WaveDumpConfig.txt"
+#define DEFAULT_CONFIG_FILE  "/etc/wavedump/WaveDumpConfig.txt" */
 /* #define GNUPLOT_DEFAULT_PATH "" */
 /* #else */
 /* #define DEFAULT_CONFIG_FILE  "WaveDumpConfig.txt"  /\* local directory *\/ */
@@ -58,6 +59,7 @@
 /* #endif */
 
 /* #define OUTFILENAME "wave"  /\* The actual file name is wave_n.txt, where n is the channel *\/ */
+
 #define MAX_CH  64          /* max. number of channels */
 #define MAX_SET 8           /* max. number of independent settings */
 
@@ -126,26 +128,94 @@
 /* } WaveDumpConfig_t; */
 
 
-typedef struct WaveDumpRun_t {
-    int Quit;
-    int AcqRun;
-    int PlotType;
-    int ContinuousTrigger;
-    int ContinuousWrite;
-    int SingleWrite;
-    int ContinuousPlot;
-    int SinglePlot;
-    int SetPlotOptions;
-    int GroupPlotIndex;
-    int ChannelPlotMask;
-    int Restart;
-    int RunHisto;
-    uint32_t *Histogram[MAX_CH];
-    FILE *fout[MAX_CH];
-} WaveDumpRun_t;
+/* typedef struct WaveDumpRun_t { */
+/*     int Quit; */
+/*     int AcqRun; */
+/*     int PlotType; */
+/*     int ContinuousTrigger; */
+/*     int ContinuousWrite; */
+/*     int SingleWrite; */
+/*     int ContinuousPlot; */
+/*     int SinglePlot; */
+/*     int SetPlotOptions; */
+/*     int GroupPlotIndex; */
+/*     int ChannelPlotMask; */
+/*     int Restart; */
+/*     int RunHisto; */
+/*     uint32_t *Histogram[MAX_CH]; */
+/*     FILE *fout[MAX_CH]; */
+/* } WaveDumpRun_t; */
 
-/* /\* Function prototypes *\/ */
-/* int ParseConfigFile(FILE *f_ini, WaveDumpConfig_t *WDcfg); */
+typedef struct WaveDumpConfig_t {
+  int LinkType;
+  int LinkNum;
+  int ConetNode;
+  uint32_t BaseAddress;
+  int Nch;
+  int Nbit;
+  float Ts;
+  int NumEvents;
+  int RecordLength;
+  int PostTrigger;
+  /* int InterruptNumEvents; */
+  int TestPattern;
+  int DesMode;
+  int TriggerEdge;
+  int FPIOtype;
+
+  CAEN_DGTZ_TriggerMode_t ExtTriggerMode;
+
+  uint8_t EnableMask;
+
+  CAEN_DGTZ_TriggerMode_t ChannelTriggerMode[MAX_SET];
+
+  uint32_t DCoffset[MAX_SET];
+  int32_t  DCoffsetGrpCh[MAX_SET][MAX_SET];
+  uint32_t Threshold[MAX_SET];
+  uint8_t GroupTrgEnableMask[MAX_SET];
+  
+  uint32_t FTDCoffset[MAX_SET];
+  uint32_t FTThreshold[MAX_SET];
+
+  CAEN_DGTZ_TriggerMode_t	FastTriggerMode;
+  uint32_t	 FastTriggerEnabled;
+
+  int GWn;
+  uint32_t GWaddr[MAX_GW];
+  uint32_t GWdata[MAX_GW];
+
+  /* OUTFILE_FLAGS OutFileFlags; */
+  
+  int useCorrections;
+  
+} WaveDumpConfig_t;
+
+
+static WaveDumpConfig_t  WDcfg;
+static int v1742_handle;
+static char *v1742_buffer;
+static char *v1742_eventPtr;
+static CAEN_DGTZ_BoardInfo_t       BoardInfo;
+static CAEN_DGTZ_EventInfo_t       EventInfo;
+static CAEN_DGTZ_UINT16_EVENT_t    *Event16=NULL; /* generic event struct with 16 bit data (10, 12, 14 and 16 bit digitizers */
+static CAEN_DGTZ_UINT8_EVENT_t     *Event8=NULL; /* generic event struct with 8 bit data (only for 8 bit digitizers) */ 
+static CAEN_DGTZ_X742_EVENT_t       *Event742=NULL;  /* custom event struct with 8 bit data (only for 8 bit digitizers) */
+static DataCorrection_t Table_gr0;
+static DataCorrection_t Table_gr1;
+
+
+/* ###########################################################################
+*  Functions
+*  ########################################################################### */
+
+/*! \fn      int ParseConfigFile(FILE *f_ini, WaveDumpConfig_t *WDcfg) 
+*   \brief   Read the configuration file and set the WaveDump paremeters
+*            
+*   \param   f_ini        Pointer to the config file
+*   \param   WDcfg:   Pointer to the WaveDumpConfig data structure
+*   \return  0 = Success; negative numbers are error codes
+*/
+int ParseConfigFile(FILE *f_ini, WaveDumpConfig_t *WDcfg);
 
 /*! \fn      int ProgramDigitizer(int handle, WaveDumpConfig_t WDcfg) 
 *   \brief   configure the digitizer according to the parameters read from
@@ -156,5 +226,18 @@ typedef struct WaveDumpRun_t {
 *   \return  0 = Success; negative numbers are error codes
 */
 int ProgramDigitizer(int handle, WaveDumpConfig_t WDcfg);
+
+/*! \fn      int GetMoreBoardNumChannels(CAEN_DGTZ_BoardInfo_t BoardInfo,  WaveDumpConfig_t *WDcfg)
+*   \brief   calculate num of channels, num of bit and sampl period according to the board type
+*
+*   \param   BoardInfo   Board Type
+*   \param   WDcfg       pointer to the config. struct
+*   \return  0 = Success; -1 = unknown board type
+*/
+int GetMoreBoardInfo(int handle, CAEN_DGTZ_BoardInfo_t BoardInfo, WaveDumpConfig_t *WDcfg);
+
+int init_V1742();
+int read_V1742();
+int stop_V1742();
 
 #endif /* _WAVEDUMP__H */

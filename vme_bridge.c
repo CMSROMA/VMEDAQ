@@ -14,8 +14,8 @@ int bridge_init(int32_t &BHandle) {
   unsigned int DataShort=0;
   VMEBoard = cvV1718;
   // VMEBoard = cvV2718;
-  Device = 1;
-  Link = 0;
+  Device = VME_DEVICE_ID;
+  Link = VME_LINK_ID;
   bool debug = false;
   
   if( CAENVME_Init(VMEBoard, Link, Device, &BHandle) != cvSuccess ) 
