@@ -22,6 +22,9 @@
 #include <string.h>
 #include <math.h>
 
+#include <CAENDigitizer.h>
+#include "X742CorrectionRoutines.h"
+
 /* //#include <fstream.h> */
 /* #include "WDconfig.h" */
 
