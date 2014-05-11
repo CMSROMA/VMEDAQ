@@ -42,6 +42,94 @@
 /* #define DBG_TIME */
 
 #include "V1742_lib.h"
+#include "vme_bridge.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+
+
+#include "X742CorrectionRoutines.h"
+
+#define DEFAULT_CONFIG_FILE  "/home/cmsdaq/DAQ/VMEDAQ/V1742_config.txt"
+
+#define MAX_CH  64          /* max. number of channels */
+#define MAX_SET 8           /* max. number of independent settings */
+
+#define MAX_GW  1000        /* max. number of generic write commads */
+
+
+/* #define VME_INTERRUPT_LEVEL      1 */
+/* #define VME_INTERRUPT_STATUS_ID  0xAAAA */
+/* #define INTERRUPT_MODE           CAEN_DGTZ_IRQ_MODE_ROAK */
+/* #define INTERRUPT_TIMEOUT        200  // ms */
+
+        
+/* ###########################################################################
+   Typedefs
+   ###########################################################################
+*/
+
+typedef struct WaveDumpConfig_t {
+  int LinkType;
+  int LinkNum;
+  int ConetNode;
+  uint32_t BaseAddress;
+  int Nch;
+  int Nbit;
+  float Ts;
+  int NumEvents;
+  int RecordLength;
+  unsigned int PostTrigger;
+  /* int InterruptNumEvents; */
+  int TestPattern;
+  int DesMode;
+  int TriggerEdge;
+  int FPIOtype;
+
+  CAEN_DGTZ_TriggerMode_t ExtTriggerMode;
+
+  uint8_t EnableMask;
+
+  CAEN_DGTZ_TriggerMode_t ChannelTriggerMode[MAX_SET];
+
+  uint32_t DCoffset[MAX_SET];
+  int32_t  DCoffsetGrpCh[MAX_SET][MAX_SET];
+  uint32_t Threshold[MAX_SET];
+  uint8_t GroupTrgEnableMask[MAX_SET];
+  
+  uint32_t FTDCoffset[MAX_SET];
+  uint32_t FTThreshold[MAX_SET];
+
+  CAEN_DGTZ_TriggerMode_t	FastTriggerMode;
+  uint32_t	 FastTriggerEnabled;
+
+  int GWn;
+  uint32_t GWaddr[MAX_GW];
+  uint32_t GWdata[MAX_GW];
+
+  /* OUTFILE_FLAGS OutFileFlags; */
+  
+  int useCorrections;
+  
+} WaveDumpConfig_t;
+
+
+
+//Static members
+static WaveDumpConfig_t  WDcfg;
+static int v1742_handle;
+static char *v1742_buffer;
+static char *v1742_eventPtr;
+static CAEN_DGTZ_BoardInfo_t       BoardInfo;
+static CAEN_DGTZ_EventInfo_t       EventInfo;
+static CAEN_DGTZ_UINT16_EVENT_t    *Event16=NULL; /* generic event struct with 16 bit data (10, 12, 14 and 16 bit digitizers */
+static CAEN_DGTZ_UINT8_EVENT_t     *Event8=NULL; /* generic event struct with 8 bit data (only for 8 bit digitizers) */ 
+static CAEN_DGTZ_X742_EVENT_t       *Event742=NULL;  /* custom event struct with 8 bit data (only for 8 bit digitizers) */
+static DataCorrection_t Table_gr0;
+static DataCorrection_t Table_gr1;
+
 
 /* Error messages */
 typedef enum  {
@@ -58,28 +146,12 @@ typedef enum  {
   ERR_EVENT_BUILD,
   ERR_HISTO_MALLOC,
   ERR_UNHANDLED_BOARD,
+  ERR_MISMATCH_EVENTS,
+  ERR_FREE_BUFFER,
   /* ERR_OUTFILE_WRITE, */
 
   ERR_DUMMY_LAST,
 } ERROR_CODES;
-
-/* static char ErrMsg[ERR_DUMMY_LAST][100] = { */
-/*     "No Error",                                         /\* ERR_NONE *\/ */
-/*     "Configuration File not found",                     /\* ERR_CONF_FILE_NOT_FOUND *\/ */
-/*     "Can't open the digitizer",                         /\* ERR_DGZ_OPEN *\/ */
-/*     "Can't read the Board Info",                        /\* ERR_BOARD_INFO_READ *\/ */
-/*     "Can't run WaveDump for this digitizer",            /\* ERR_INVALID_BOARD_TYPE *\/ */
-/*     "Can't program the digitizer",                      /\* ERR_DGZ_PROGRAM *\/ */
-/*     "Can't allocate the memory for the readout buffer", /\* ERR_MALLOC *\/ */
-/*     "Restarting Error",                                 /\* ERR_RESTART *\/ */
-/*     /\* "Interrupt Error",                                  /\\* ERR_INTERRUPT *\\/ *\/ */
-/*     "Readout Error",                                    /\* ERR_READOUT *\/ */
-/*     "Event Build Error",                                /\* ERR_EVENT_BUILD *\/ */
-/*     "Can't allocate the memory fro the histograms",     /\* ERR_HISTO_MALLOC *\/ */
-/*     "Unhandled board type",                             /\* ERR_UNHANDLED_BOARD *\/ */
-/*     /\* "Output file write error",                          /\\* ERR_OUTFILE_WRITE *\\/ *\/ */
-
-/* }; */
 
 
 #ifndef max
@@ -111,13 +183,13 @@ typedef enum  {
 /* } */
 
 
-/*! \fn      int GetMoreBoardNumChannels(CAEN_DGTZ_BoardInfo_t BoardInfo,  WaveDumpConfig_t *WDcfg)
- *   \brief   calculate num of channels, num of bit and sampl period according to the board type
- *
- *   \param   BoardInfo   Board Type
- *   \param   WDcfg       pointer to the config. struct
- *   \return  0 = Success; -1 = unknown board type
- */
+/*! \fn      int GetMoreBoardInfo(CAEN_DGTZ_BoardInfo_t BoardInfo,  WaveDumpConfig_t *WDcfg)
+*   \brief   calculate num of channels, num of bit and sampl period according to the board type
+*
+*   \param   BoardInfo   Board Type
+*   \param   WDcfg       pointer to the config. struct
+*   \return  0 = Success; -1 = unknown board type
+*/
 int GetMoreBoardInfo(int handle, CAEN_DGTZ_BoardInfo_t BoardInfo, WaveDumpConfig_t *WDcfg)
 {
   CAEN_DGTZ_DRS4Frequency_t freq;
@@ -1150,7 +1222,8 @@ int init_V1742()
   /*    device with CAENComm lib, read the the correction table and suddenly close the device. *\/ */
 
   if(WDcfg.useCorrections != -1) { // use Corrections Manually
-    if (ret = (CAEN_DGTZ_ErrorCode) CAENComm_OpenDevice((CAENComm_ConnectionType)WDcfg.LinkType,WDcfg.LinkNum,WDcfg.ConetNode,WDcfg.BaseAddress,&v1742_handle)) {
+    //Beware: Get Device ID from the vme_bridge.h and not from config file
+    if (ret = (CAEN_DGTZ_ErrorCode) CAENComm_OpenDevice((CAENComm_ConnectionType)WDcfg.LinkType,VME_DEVICE_ID,WDcfg.ConetNode,WDcfg.BaseAddress,&v1742_handle)) {
       ErrCode = ERR_DGZ_OPEN;
       return ErrCode;
     }
@@ -1169,7 +1242,8 @@ int init_V1742()
     // write tables to file
   }
 
-  ret = CAEN_DGTZ_OpenDigitizer( (CAEN_DGTZ_ConnectionType) WDcfg.LinkType, WDcfg.LinkNum, WDcfg.ConetNode, WDcfg.BaseAddress, &v1742_handle);
+  //Beware: Get Device ID from the vme_bridge.h and not from config file
+  ret = CAEN_DGTZ_OpenDigitizer( (CAEN_DGTZ_ConnectionType) WDcfg.LinkType, VME_DEVICE_ID, WDcfg.ConetNode, WDcfg.BaseAddress, &v1742_handle);
   if (ret) {
     ErrCode = ERR_DGZ_OPEN;
     return ErrCode;
@@ -1354,7 +1428,7 @@ int init_V1742()
 /* 			} */
 /* 	} */
 
-int read_V1742()
+int read_V1742(unsigned int nevents, std::vector<CAEN_DGTZ_X742_EVENT_t>& events)
 {
 
   CAEN_DGTZ_ErrorCode ret=CAEN_DGTZ_Success;
@@ -1379,7 +1453,14 @@ int read_V1742()
       return ErrCode;
     }
   }
+  
 
+  if (nevents != NumEvents)
+    {
+      ErrCode = ERR_MISMATCH_EVENTS;
+      return ErrCode;
+    }
+    
   /* Nb += BufferSize; */
   /* Ne += NumEvents; */
   /* CurrentTime = get_time(); */
@@ -1418,13 +1499,15 @@ int read_V1742()
 	ApplyDataCorrection( 0, WDcfg.useCorrections, CAEN_DGTZ_DRS4_5GHz, &(Event742->DataGroup[0]), &Table_gr0);
 	ApplyDataCorrection( 1, WDcfg.useCorrections, CAEN_DGTZ_DRS4_5GHz, &(Event742->DataGroup[1]), &Table_gr1);
       }
+      events.push_back(*Event742);
     }
+    
     if (ret) {
       ErrCode = ERR_EVENT_BUILD;
       return ErrCode;
-    }
+    }    
 
-  }    
+  }  
    
   /* /\* Update Histograms *\/ */
   /*   if (WDrun.RunHisto) { */
@@ -1576,6 +1659,13 @@ int read_V1742()
   /*     } */
   /*   } */
   /* } */
+
+  //Freeing V1742 memory  after read
+  ret = CAEN_DGTZ_FreeReadoutBuffer(&v1742_buffer);
+  if (ret) {
+    ErrCode = ERR_FREE_BUFFER;
+    return ErrCode;
+  }
    
   ErrCode = ERR_NONE;
   return ErrCode;
@@ -1603,7 +1693,7 @@ int stop_V1742()
     CAEN_DGTZ_FreeEvent(v1742_handle, (void**)&Event8);
   if(Event16)
     CAEN_DGTZ_FreeEvent(v1742_handle, (void**)&Event16);
-  CAEN_DGTZ_FreeReadoutBuffer(&v1742_buffer);
+  //  CAEN_DGTZ_FreeReadoutBuffer(&v1742_buffer);
   CAEN_DGTZ_CloseDigitizer(v1742_handle);
   
   return 0;

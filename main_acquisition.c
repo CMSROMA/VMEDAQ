@@ -24,6 +24,7 @@
 #include "v1718_lib.h"
 #include "V513.h"
 #include "V814_lib.h"
+#include "V1742_lib.h"
 #include "V262.h"
 #include <fstream>
 #include <iostream>
@@ -234,6 +235,18 @@ int main(int argc, char** argv)
       }
   }
 
+  /* Digitizer V1742 initialization */
+  if (DIG1742)
+    {
+      printf("V1742 digitizer initialization\n");
+      status_init *= 1-init_V1742();
+      if (status_init != 1) 
+	{
+	  printf("Error initializing V1742... STOP!\n");
+	  return(1);
+	}
+    }
+
   /* IO 262 initialization */
   if (IO262)
     {
@@ -246,6 +259,7 @@ int main(int argc, char** argv)
 	  return(1);
 	}
     }
+
 
   printf("================================================\nVME and modules initialization completed\n\nStart data acquisition\n================================================\n");
   
@@ -274,6 +288,7 @@ int main(int argc, char** argv)
   vector<int> my_adc792_2_OD, my_adc792_2_WD;
   vector<int> my_adc792_3_OD, my_adc792_3_WD;
   vector<uint32_t> my_scal_OD, my_scal_WD, tmpscaD;
+  vector<CAEN_DGTZ_X742_EVENT_t> my_dig1742_OD;
   vector<int> my_header_OD;
 
   myOut.open(f_value,ios::out);
@@ -504,6 +519,19 @@ int main(int argc, char** argv)
 	  if (d_value) std::cout << "ADC 792 n.3:: WORDS " << adc792Words_3 << std::endl;
 	}
 
+	/* read the Digitizer 1742*/
+	if(DIG1742) {
+	  my_dig1742_OD.clear();
+	  daq_status = 1 - read_V1742(hm_evt_read,my_dig1742_OD);
+	  if (daq_status != 1) 
+	    {
+	      printf("\nError reading DIGI 1742... STOP!\n");
+	      return(1);
+	    }
+
+	  board_num += 128;
+	}
+
 	/* read the SCALER 560 EACH event*/
 	if(SCALER560 && update_scaler) {
 	  
@@ -601,29 +629,7 @@ int main(int argc, char** argv)
 	  //What boards?
 	  myOE.push_back(board_num);
 	  
-	  if(TDC1190) {
-	    if(ie<(int)my_tdc_WD.size()) {
-	      myOE.push_back(my_tdc_WD.at(ie));	    
-	    }
-	  }
-	  
-	  if(TDC1190_2) {
-	    if(ie<(int)my_tdc2_WD.size()) {
-	      myOE.push_back(my_tdc2_WD.at(ie));	    
-	    }
-	  }
-	  
-	  if(TDC488A)  {
-	    if(ie<(int)my_v488_WD.size()) {
-	      myOE.push_back(my_v488_WD.at(ie));	    
-	    } else {
-	      cout<<"nWords:: We are missing an event!!! "<<ie<<" "<<my_v488_WD.size()<<endl;
-	      myOE.push_back(1);
-	    }
-	  }
-	  
 	  //	    if(ADC265) myOE.push_back(adcWords);
-
 	  int eventSize_adc792=0;
 	  int eventSize_adc792_2=0;
 	  int eventSize_adc792_3=0;
@@ -663,6 +669,28 @@ int main(int argc, char** argv)
 
 	  }
 
+	  if(TDC1190) {
+	    if(ie<(int)my_tdc_WD.size()) {
+	      myOE.push_back(my_tdc_WD.at(ie));	    
+	    }
+	  }
+	  
+	  if(TDC1190_2) {
+	    if(ie<(int)my_tdc2_WD.size()) {
+	      myOE.push_back(my_tdc2_WD.at(ie));	    
+	    }
+	  }
+	  
+	  if(TDC488A)  {
+	    if(ie<(int)my_v488_WD.size()) {
+	      myOE.push_back(my_v488_WD.at(ie));	    
+	    } else {
+	      cout<<"nWords:: We are missing an event!!! "<<ie<<" "<<my_v488_WD.size()<<endl;
+	      myOE.push_back(1);
+	    }
+	  }
+
+
 	  if(SCALER560 && update_scaler) {
 	    //Only dump the scaler on the of the event readout'
 	    if(my_scal_WD.size()) {
@@ -683,6 +711,41 @@ int main(int argc, char** argv)
 	  //Ok, finished writing the Number of words.
 	  //Now writing the events
 	  
+	  
+	  if(ADC265) {
+	    if (! (start_adc265 + ADC265_CHANNEL >  my_adc_OD.size()) )
+	      for(int idum = start_adc265; idum<start_adc265 + ADC265_CHANNEL; idum++)
+		{
+		  myOE.push_back(my_adc_OD.at(idum));
+		}
+	    start_adc265+=ADC265_CHANNEL;
+	  }
+
+	  if(ADC792) {
+	    
+	    end_adc792 = start_adc792 + eventSize_adc792;
+	    for(int idum = start_adc792; idum<end_adc792; idum++) {
+	      myOE.push_back(my_adc792_OD.at(idum));
+	    }
+	    start_adc792 = end_adc792; //Reset the start position to the end of previuos write
+	    }
+	  
+	  if(ADC792_2 && my_adc792_2_WD.size()) {
+	    end_adc792_2 = start_adc792_2 + eventSize_adc792_2;
+	    for(int idum = start_adc792_2; idum<end_adc792_2; idum++) {
+	      myOE.push_back(my_adc792_2_OD.at(idum));
+	    }
+	    start_adc792_2 = end_adc792_2; //Reset the start position to the end of previuos write
+	  }
+	  
+	  if(ADC792_3 && my_adc792_3_WD.size()) {
+	    end_adc792_3 = start_adc792_3 + eventSize_adc792_3;
+	    for(int idum = start_adc792_3; idum<end_adc792_3; idum++) {
+	      myOE.push_back(my_adc792_3_OD.at(idum));
+	      }
+	    start_adc792_3 = end_adc792_3; //Reset the start position to the end of previuos write
+	  }
+
 	  if(TDC1190 && my_tdc_WD.size()) {
 	    end = start + my_tdc_WD.at(ie); 
 	    for(int idum = start; idum<end; idum++) {
@@ -719,40 +782,7 @@ int main(int argc, char** argv)
 	      myOE.push_back(40000);
 	    }
 	  }
-	  
-	  if(ADC265) {
-	    if (! (start_adc265 + ADC265_CHANNEL >  my_adc_OD.size()) )
-	      for(int idum = start_adc265; idum<start_adc265 + ADC265_CHANNEL; idum++)
-		{
-		  myOE.push_back(my_adc_OD.at(idum));
-		}
-	    start_adc265+=ADC265_CHANNEL;
-	  }
 
-	  if(ADC792) {
-	    
-	    end_adc792 = start_adc792 + eventSize_adc792;
-	    for(int idum = start_adc792; idum<end_adc792; idum++) {
-	      myOE.push_back(my_adc792_OD.at(idum));
-	    }
-	    start_adc792 = end_adc792; //Reset the start position to the end of previuos write
-	    }
-	  
-	  if(ADC792_2 && my_adc792_2_WD.size()) {
-	    end_adc792_2 = start_adc792_2 + eventSize_adc792_2;
-	    for(int idum = start_adc792_2; idum<end_adc792_2; idum++) {
-	      myOE.push_back(my_adc792_2_OD.at(idum));
-	    }
-	    start_adc792_2 = end_adc792_2; //Reset the start position to the end of previuos write
-	  }
-	  
-	  if(ADC792_3 && my_adc792_3_WD.size()) {
-	    end_adc792_3 = start_adc792_3 + eventSize_adc792_3;
-	    for(int idum = start_adc792_3; idum<end_adc792_3; idum++) {
-	      myOE.push_back(my_adc792_3_OD.at(idum));
-	      }
-	    start_adc792_3 = end_adc792_3; //Reset the start position to the end of previuos write
-	  }
 	  
 	  if(SCALER560 && my_scal_OD.size() && update_scaler) {
 	    //Only dump the scaler on the 'FIRST set of events'
@@ -841,16 +871,26 @@ int main(int argc, char** argv)
   if(!tmpscaD.size())  cout<<" Warning:: Scaler Read :: "<< tmpscaD.size() << std::endl;
   for (unsigned int i(0);i<tmpscaD.size();++i)
     std::cout << "V560:: channel " << i << " has " << tmpscaD[i] << " counts" << std::endl;
+  fflush(stdout);
 
+  if(DIG1742) {
+    daq_status = 1 - stop_V1742();
+    if (daq_status != 1) 
+      {
+	printf("\nError stopping DIGI 1742... STOP!\n");
+	return(1);
+      }
+  }
 
   /* Output File finalization */  
   printf("\n Closing output file!\n");
   myOut.close();
-  
+
   /* VME deinitialization */
   bridge_deinit(BHandle);
 
   printf("\n VME and modules deinitialization completed \n\n Data acquisition stopped\n");
+  fflush(stdout);
 
   return(0);
 }
