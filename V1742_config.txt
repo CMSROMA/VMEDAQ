@@ -27,17 +27,6 @@ OPEN USB 1 00500000
 # 0 -> 7
 CORRECTION_LEVEL AUTO
 
-# GNUPLOT_PATH: path to gnuplot executable file
-GNUPLOT_PATH  "/usr/bin/"
-
-# OUTPUT_FILE_FORMAT: output file can be either ASCII (column of decimal numbers) or binary 
-# (2 bytes per sample, except for Mod 721 and Mod 731 that is 1 byte per sample)
-# options: BINARY, ASCII
-OUTPUT_FILE_FORMAT  ASCII
-
-# OUTPUT_FILE_HEADER: if enabled, the header is included in the output file data
-# options: YES, NO
-OUTPUT_FILE_HEADER  NO
 
 # RECORD_LENGTH = number of samples in the acquisition window
 # For the models 742 the options available are only 1024, 520, 256 and 136
@@ -71,12 +60,12 @@ ENABLED_FAST_TRIGGER_DIGITIZING		YES
 
 # MAX_NUM_EVENTS_BLT: maximum number of events to read out in one Block Transfer. High values corresponds to 
 # options: 1 to 1023
-MAX_NUM_EVENTS_BLT   30
+MAX_NUM_EVENTS_BLT   10
 
 # POST_TRIGGER: post trigger size in percent of the whole acquisition window
 # options: 0 to 100
 # On models 742 there is a delay of about 35nsec on signal Fast Trigger TR; the post trigger is added to this delay  
-POST_TRIGGER  100
+POST_TRIGGER  50
 
 # TRIGGER_EDGE: decides whether the trigger occurs on the rising or falling edge of the signal
 # options: RISING, FALLING
@@ -84,7 +73,7 @@ TRIGGER_EDGE  FALLING
 
 # USE_INTERRUPT: number of events that must be ready for the readout when the IRQ is asserted.
 # Zero means that the interrupts are not used (readout runs continuously)
-USE_INTERRUPT 0
+#USE_INTERRUPT 0
 
 # FPIO_LEVEL: type of the front panel I/O LEMO connectors 
 # options: NIM, TTL
@@ -143,11 +132,11 @@ FPIO_LEVEL  NIM
 
 [0]
 ENABLE_INPUT           YES
-#DC_OFFSET             -5
-GRP_CH_DC_OFFSET       0,0,0,0,0,0,0,0
-#GRP_CH_DC_OFFSET       -20,-20,-20,-20,-20,-20,-20,-20
-TRIGGER_THRESHOLD     2000
-CHANNEL_TRIGGER        ACQUISITION_AND_TRGOUT
+DC_OFFSET             -20
+#GRP_CH_DC_OFFSET       0,0,0,0,0,0,0,0
+GRP_CH_DC_OFFSET       -20,-20,-20,-20,-20,-20,-20,-20
+TRIGGER_THRESHOLD     100
+CHANNEL_TRIGGER        DISABLED
 GROUP_TRG_ENABLE_MASK  FF
 
 [1]

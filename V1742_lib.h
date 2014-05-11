@@ -54,7 +54,7 @@
 /* #endif */
 
 /* #ifdef LINUX */
-#define DEFAULT_CONFIG_FILE  "/etc/wavedump/WaveDumpConfig.txt" */
+#define DEFAULT_CONFIG_FILE  "/home/cmsdaq/DAQ/VMEDAQ/V1742_config.txt"
 /* #define GNUPLOT_DEFAULT_PATH "" */
 /* #else */
 /* #define DEFAULT_CONFIG_FILE  "WaveDumpConfig.txt"  /\* local directory *\/ */
@@ -159,7 +159,7 @@ typedef struct WaveDumpConfig_t {
   float Ts;
   int NumEvents;
   int RecordLength;
-  int PostTrigger;
+  unsigned int PostTrigger;
   /* int InterruptNumEvents; */
   int TestPattern;
   int DesMode;
