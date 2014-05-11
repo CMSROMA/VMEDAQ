@@ -288,7 +288,7 @@ int main(int argc, char** argv)
   vector<int> my_adc792_2_OD, my_adc792_2_WD;
   vector<int> my_adc792_3_OD, my_adc792_3_WD;
   vector<uint32_t> my_scal_OD, my_scal_WD, tmpscaD;
-  vector<CAEN_DGTZ_X742_EVENT_t> my_dig1742_OD;
+  vector<V1742_Event_t> my_dig1742_OD;
   vector<int> my_header_OD;
 
   myOut.open(f_value,ios::out);
