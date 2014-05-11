@@ -398,7 +398,32 @@ int writeEventToOutputBuffer_V1742(std::vector<unsigned int> *eventBuffer, CAEN_
 {
   int gr,ch;
 
+  //          ====================================================
+  //          |           V1742 Raw Event Data Format            |
+  //          ====================================================
+
+  //                       31  -  28 27  -  16 15   -   0
+  //                W[0] = [ 1010  ] [     Event #Word  ] //Event Header (5 words)
+  //                W[1] = [     Board Id    ] [ Pattern]  
+  //                W[2] = [      #channels readout     ]
+  //                W[3] = [        Event counter       ]
+  //                W[4] = [      Trigger Time Tag      ]
+  //                W[5] = [ 1000  ] [    Ch0    #Word  ] // Ch0 Data (2 + #samples words)
+  //                W[6] = [    Ch0  #Gr    ] [ Ch0 #Ch ] 
+  //                W[7] = [ Ch0 Corr. samples  (float) ]
+  //                ..   = [ Ch0 Corr. samples  (float) ]
+  //     W[5+Ch0  #Word] = [ 1000  ] [    Ch1    #Word  ] // Ch1 Data (2 + #samples words)
+  //     W[6+Ch0  #Word] = [    Ch1  #Gr    ] [ Ch1 #Ch ]
+  //     W[7+Ch0  #Word] = [ Ch1 Corr. samples  (float) ]
+  //               ...   = [          .....             ]
+
   eventBuffer->clear();
+  eventBuffer->resize(5);
+  (*eventBuffer)[0]=0xA0000005; 
+  (*eventBuffer)[1]=((EventInfo->BoardId)<<26)+EventInfo->Pattern;
+  (*eventBuffer)[2]=0;
+  (*eventBuffer)[3]=EventInfo->EventCounter;
+  (*eventBuffer)[4]=EventInfo->TriggerTimeTag;
 
   for (gr=0;gr<(WDcfg.Nch/8);gr++) {
     if (Event->GrPresent[gr]) {
@@ -409,25 +434,23 @@ int writeEventToOutputBuffer_V1742(std::vector<unsigned int> *eventBuffer, CAEN_
 	}
 
 	// Channel Header for this event
- 	uint32_t BinHeader[7];
-	BinHeader[0] = 7 + Size; //Number of words written for this channel
-	BinHeader[1] = EventInfo->BoardId;
-	BinHeader[2] = EventInfo->Pattern;
-	BinHeader[3] = gr;
-	BinHeader[4] = ch;
-	BinHeader[5] = EventInfo->EventCounter;
-	BinHeader[6] = EventInfo->TriggerTimeTag;
+ 	uint32_t ChHeader[2];
+	ChHeader[0] = (8<<28) + (2 + Size); //Number of words written for this channel
+	ChHeader[1] = (gr<<16)+ch;
 
 	//Starting pointer
 	int start_ptr=eventBuffer->size();
 
 	//Allocating necessary space for this channel
-	eventBuffer->resize(eventBuffer->size() + 7 + Size);
-	memcpy(&((*eventBuffer)[start_ptr]), &BinHeader[0], 7 * sizeof(unsigned int));
+	eventBuffer->resize(eventBuffer->size() + 2 + Size);
+	memcpy(&((*eventBuffer)[start_ptr]), &ChHeader[0], 2 * sizeof(unsigned int));
 
 	//Beware the datas are float (because they are corrected...) but copying them here bit by bit. Should remember this for reading them out
-	memcpy(&((*eventBuffer)[start_ptr+7]), Event->DataGroup[gr].DataChannel[ch], Size * sizeof(unsigned int));
+	memcpy(&((*eventBuffer)[start_ptr+2]), Event->DataGroup[gr].DataChannel[ch], Size * sizeof(unsigned int));
 
+	//Update event size and #channels
+	(*eventBuffer)[0]+=(Size+2);
+	(*eventBuffer)[2]++;
       }
     }
   }
