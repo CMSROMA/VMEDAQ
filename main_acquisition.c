@@ -767,9 +767,7 @@ int main(int argc, char** argv)
 	  }
 
 	  if(DIG1742) {
-	    std::vector<int>::iterator V1742_event_start_position=myOE.end();
-	    myOE.resize(myOE.size()+eventSize_dig1742);
-	    std::copy(my_Dig_Event.begin(),my_Dig_Event.end(),V1742_event_start_position);
+	    myOE.insert(myOE.end(),my_Dig_Event.begin(),my_Dig_Event.end());
 	  }
 
 

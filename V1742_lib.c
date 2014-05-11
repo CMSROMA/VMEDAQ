@@ -403,18 +403,18 @@ int writeEventToOutputBuffer_V1742(std::vector<unsigned int> *eventBuffer, CAEN_
   //          ====================================================
 
   //                       31  -  28 27  -  16 15   -   0
-  //                W[0] = [ 1010  ] [     Event #Word  ] //Event Header (5 words)
-  //                W[1] = [     Board Id    ] [ Pattern]  
-  //                W[2] = [      #channels readout     ]
-  //                W[3] = [        Event counter       ]
-  //                W[4] = [      Trigger Time Tag      ]
-  //                W[5] = [ 1000  ] [    Ch0    #Word  ] // Ch0 Data (2 + #samples words)
-  //                W[6] = [    Ch0  #Gr    ] [ Ch0 #Ch ] 
-  //                W[7] = [ Ch0 Corr. samples  (float) ]
-  //                ..   = [ Ch0 Corr. samples  (float) ]
-  //     W[5+Ch0  #Word] = [ 1000  ] [    Ch1    #Word  ] // Ch1 Data (2 + #samples words)
-  //     W[6+Ch0  #Word] = [    Ch1  #Gr    ] [ Ch1 #Ch ]
-  //     W[7+Ch0  #Word] = [ Ch1 Corr. samples  (float) ]
+  //            Word[0] = [ 1010  ] [     Event #Word  ] //Event Header (5 words)
+  //            Word[1] = [     Board Id    ] [ Pattern]  
+  //            Word[2] = [      #channels readout     ]
+  //            Word[3] = [        Event counter       ]
+  //            Word[4] = [      Trigger Time Tag      ]
+  //            Word[5] = [ 1000  ] [    Ch0   #Words  ] // Ch0 Data (2 + #samples words)
+  //            Word[6] = [    Ch0  #Gr    ] [ Ch0 #Ch ] 
+  //            Word[7] = [ Ch0 Corr. samples  (float) ]
+  //                ..  = [ Ch0 Corr. samples  (float) ]
+  // Word[5+Ch0 #Words] = [ 1000  ] [    Ch1   #Words  ] // Ch1 Data (2 + #samples words)
+  // Word[6+Ch0 #Words] = [    Ch1  #Gr    ] [ Ch1 #Ch ]
+  // Word[7+Ch0 #Words] = [ Ch1 Corr. samples  (float) ]
   //               ...   = [          .....             ]
 
   eventBuffer->clear();
