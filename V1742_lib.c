@@ -10,7 +10,6 @@
 #include <string.h>
 #include <math.h>
 
-
 #include "X742CorrectionRoutines.h"
 
 #define DEFAULT_CONFIG_FILE  "/home/cmsdaq/DAQ/VMEDAQ/V1742_config.txt"
@@ -83,10 +82,12 @@ typedef struct WaveDumpConfig_t {
 */
 
 static WaveDumpConfig_t  WDcfg;
+
 static int v1742_handle;
 
 static char *v1742_buffer;
 static char *v1742_eventPtr;
+
 static CAEN_DGTZ_UINT16_EVENT_t    *Event16=NULL; /* generic event struct with 16 bit data (10, 12, 14 and 16 bit digitizers */
 static CAEN_DGTZ_UINT8_EVENT_t     *Event8=NULL; /* generic event struct with 8 bit data (only for 8 bit digitizers) */ 
 static CAEN_DGTZ_X742_EVENT_t       *Event742=NULL;  /* custom event struct with 8 bit data (only for 8 bit digitizers) */
@@ -95,7 +96,6 @@ static CAEN_DGTZ_BoardInfo_t       BoardInfo;
 
 static DataCorrection_t Table_gr0;
 static DataCorrection_t Table_gr1;
-
 
 /* ###########################################################################
    Error messages
@@ -654,11 +654,12 @@ void SaveCorrectionTable(char *outputFileName, DataCorrection_t tb) {
   fclose(outputfile);
 }
 
-int WriteEventToBuffer_V1742(std::vector<unsigned int> *eventBuffer, CAEN_DGTZ_EventInfo_t *EventInfo, CAEN_DGTZ_X742_EVENT_t *Event)
+int writeEventToOutputBuffer_V1742(std::vector<unsigned int> *eventBuffer, CAEN_DGTZ_EventInfo_t *EventInfo, CAEN_DGTZ_X742_EVENT_t *Event)
 {
-  int gr,ch, j, ns;
-  char trname[10], flag;
+  int gr,ch;
+
   eventBuffer->clear();
+
   for (gr=0;gr<(WDcfg.Nch/8);gr++) {
     if (Event->GrPresent[gr]) {
       for(ch=0; ch<9; ch++) {
@@ -666,17 +667,27 @@ int WriteEventToBuffer_V1742(std::vector<unsigned int> *eventBuffer, CAEN_DGTZ_E
 	if (Size <= 0) {
 	  continue;
 	}
-	// Binary file format
-	uint32_t BinHeader[6];
-	BinHeader[0] = (WDcfg.Nbit == 8) ? Size + 6*sizeof(*BinHeader) : Size*4 + 6*sizeof(*BinHeader);
+
+	// Channel Header for this event
+ 	uint32_t BinHeader[7];
+	BinHeader[0] = 7 + Size; //Number of words written for this channel
 	BinHeader[1] = EventInfo->BoardId;
 	BinHeader[2] = EventInfo->Pattern;
-	BinHeader[3] = ch;
-	BinHeader[4] = EventInfo->EventCounter;
-	BinHeader[5] = EventInfo->TriggerTimeTag;
-	eventBuffer->insert(eventBuffer->end(), &BinHeader[0], &BinHeader[5]); 
-	eventBuffer->resize(eventBuffer->size() + Size);
-	memcpy(&((*eventBuffer)[eventBuffer->size() - Size]), Event->DataGroup[gr].DataChannel[ch], Size * sizeof(unsigned int));
+	BinHeader[3] = gr;
+	BinHeader[4] = ch;
+	BinHeader[5] = EventInfo->EventCounter;
+	BinHeader[6] = EventInfo->TriggerTimeTag;
+
+	//Starting pointer
+	int start_ptr=eventBuffer->size();
+
+	//Allocating necessary space for this channel
+	eventBuffer->resize(eventBuffer->size() + 7 + Size);
+	memcpy(&((*eventBuffer)[start_ptr]), &BinHeader[0], 7 * sizeof(unsigned int));
+
+	//Beware the datas are float (because they are corrected...) but copying them here bit by bit. Should remember this for reading them out
+	memcpy(&((*eventBuffer)[start_ptr+7]), Event->DataGroup[gr].DataChannel[ch], Size * sizeof(unsigned int));
+
       }
     }
   }
@@ -1040,8 +1051,6 @@ int ParseConfigFile(FILE *f_ini)
   return 0;
 }
 
-
-
 int init_V1742()
 {
 
@@ -1395,8 +1404,7 @@ int stop_V1742()
 {
   /* stop the acquisition */
   CAEN_DGTZ_SWStopAcquisition(v1742_handle);
-  
-  //  CAEN_DGTZ_FreeReadoutBuffer(&v1742_buffer);
+  CAEN_DGTZ_FreeReadoutBuffer(&v1742_buffer);
   CAEN_DGTZ_CloseDigitizer(v1742_handle);
   
   return 0;

@@ -290,6 +290,7 @@ int main(int argc, char** argv)
   vector<uint32_t> my_scal_OD, my_scal_WD, tmpscaD;
   vector<V1742_Event_t> my_dig1742_OD;
   vector<int> my_header_OD;
+  vector<unsigned int> my_Dig_Event;
 
   myOut.open(f_value,ios::out);
 
@@ -669,6 +670,24 @@ int main(int argc, char** argv)
 
 	  }
 
+	  int eventSize_dig1742=0;
+	  if (DIG1742)
+	    {
+	      if (ie<(int)my_dig1742_OD.size())
+		{
+		  daq_status *= writeEventToOutputBuffer_V1742(&my_Dig_Event,&((my_dig1742_OD[ie]).eventInfo),&((my_dig1742_OD[ie]).event));
+		  if (my_Dig_Event.size()>0)
+		    {
+		      eventSize_dig1742=my_Dig_Event.size();
+		      cout<<"This V1742 event " << ie << " has "<<eventSize_dig1742<<" words"<<endl;
+		    }
+		}
+	      else
+		cout<<"V1742::ERROR::DATA ARE CORRUPTED" <<endl;
+	      myOE.push_back(eventSize_dig1742);
+	    }
+
+	  
 	  if(TDC1190) {
 	    if(ie<(int)my_tdc_WD.size()) {
 	      myOE.push_back(my_tdc_WD.at(ie));	    
@@ -690,6 +709,7 @@ int main(int argc, char** argv)
 	    }
 	  }
 
+	  
 
 	  if(SCALER560 && update_scaler) {
 	    //Only dump the scaler on the of the event readout'
@@ -745,6 +765,13 @@ int main(int argc, char** argv)
 	      }
 	    start_adc792_3 = end_adc792_3; //Reset the start position to the end of previuos write
 	  }
+
+	  if(DIG1742) {
+	    std::vector<int>::iterator V1742_event_start_position=myOE.end();
+	    myOE.resize(myOE.size()+eventSize_dig1742);
+	    std::copy(my_Dig_Event.begin(),my_Dig_Event.end(),V1742_event_start_position);
+	  }
+
 
 	  if(TDC1190 && my_tdc_WD.size()) {
 	    end = start + my_tdc_WD.at(ie); 
