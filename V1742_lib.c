@@ -403,7 +403,7 @@ int writeEventToOutputBuffer_V1742(std::vector<unsigned int> *eventBuffer, CAEN_
   //          ====================================================
 
   //                       31  -  28 27  -  16 15   -   0
-  //            Word[0] = [ 1010  ] [     Event #Word  ] //Event Header (5 words)
+  //            Word[0] = [ 1010  ] [Event Tot #Words  ] //Event Header (5 words)
   //            Word[1] = [     Board Id    ] [ Pattern]  
   //            Word[2] = [      #channels readout     ]
   //            Word[3] = [        Event counter       ]
