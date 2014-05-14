@@ -10,7 +10,7 @@
 
 OBJS = adc265_lib.o adc792_lib.o tdc1190_lib.o tdcV488A_lib.o v1718_lib.o vme_bridge.o V513_lib.o V262_lib.o scaler560_lib.o V814_lib.o  
 
-OBJS_CAENCOMM = V814_lib_CAENComm.o V262_lib_CAENComm.o adc792_lib_CAENComm.o X742CorrectionRoutines.o V1742_lib.o 
+OBJS_CAENCOMM = V814_lib_CAENComm.o V513_lib_CAENComm.o V262_lib_CAENComm.o adc792_lib_CAENComm.o X742CorrectionRoutines.o V1742_lib.o 
 
 BINS = acquire count acquireDigitizer
 
@@ -58,6 +58,9 @@ v1718_lib.o: v1718_lib.c v1718_lib.h
 
 V513_lib.o: V513_lib.cc V513.h 
 	g++ $(COPTS) -c V513_lib.cc
+
+V513_lib_CAENComm.o: V513_lib_CAENComm.c V513_CAENComm.h 
+	g++ $(COPTS) -c V513_lib_CAENComm.c
 
 V262_lib.o: V262_lib.cc V262.h 
 	g++ $(COPTS) -c V262_lib.cc

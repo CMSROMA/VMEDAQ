@@ -11,6 +11,7 @@
 #include "V1742_lib.h"
 #include "V814_lib_CAENComm.h"
 #include "V262_CAENComm.h"
+#include "V513_CAENComm.h"
 #include "adc792_lib_CAENComm.h"
 
 
@@ -42,12 +43,32 @@ int main(int argc, char** argv)
     return(1); 
   }
 
+  int handleV513;
+  ret*=(1-CAENComm_OpenDevice((CAENComm_ConnectionType) 0,1,0,V513_0_BA,&handleV513));
+  if (ret != 1) { 
+    printf("Error opening I/O 513... STOP!\n");
+    return(1); 
+  }
+
   /* int handleV262; */
   /* ret*=(1-CAENComm_OpenDevice((CAENComm_ConnectionType) 0,1,0,0x00380000,&handleV262)); */
   /* if (ret != 1) {  */
   /*   printf("Error opening I/O V262... STOP!\n"); */
   /*   return(1);  */
   /* } */
+
+  printf("V513 register initialization\n");
+  ret *= init_V513_CAENCOMM(handleV513);
+  /* status_init *= busy_V513(BHandle,DAQ_BUSY_ON); */
+  if (ret != 1)
+    {
+      printf("Error initializing V513... STOP!\n");
+      return(1);
+    }
+
+
+
+
 
   printf("V1742 digitizer initialization\n");
   ret*=(1-init_V1742(handleV1742));
