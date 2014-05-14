@@ -24,9 +24,8 @@
 #include "v1718_lib.h"
 #include "V513.h"
 #include "V814_lib.h"
-#include "V1742_lib.h"
+//#include "V1742_lib.h"
 #include "V262.h"
-#include "CAENComm.h"
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -230,8 +229,8 @@ int main(int argc, char** argv)
   }
 
 
-  if (DIG1742)
-    {
+  /* if (DIG1742) */
+  /*   { */
       /* printf("V1742 digitizer initialization\n"); */
       /* status_init *= 1-init_V1742(); */
       /* if (status_init != 1)  */
@@ -239,7 +238,7 @@ int main(int argc, char** argv)
       /* 	  printf("Error initializing V1742... STOP!\n"); */
       /* 	  return(1); */
       /* 	} */
-    }
+    /* } */
 
   /* IO 262 initialization */
   if (IO262)
@@ -282,7 +281,7 @@ int main(int argc, char** argv)
   vector<int> my_adc792_2_OD, my_adc792_2_WD;
   vector<int> my_adc792_3_OD, my_adc792_3_WD;
   vector<uint32_t> my_scal_OD, my_scal_WD, tmpscaD;
-  vector<V1742_Event_t> my_dig1742_OD;
+  /* vector<V1742_Event_t> my_dig1742_OD; */
   vector<int> my_header_OD;
   vector<unsigned int> my_Dig_Event;
 
@@ -766,9 +765,9 @@ int main(int argc, char** argv)
 	    start_adc792_3 = end_adc792_3; //Reset the start position to the end of previuos write
 	  }
 
-	  if(DIG1742) {
-	    myOE.insert(myOE.end(),my_Dig_Event.begin(),my_Dig_Event.end());
-	  }
+	  /* if(DIG1742) { */
+	  /*   myOE.insert(myOE.end(),my_Dig_Event.begin(),my_Dig_Event.end()); */
+	  /* } */
 
 
 	  if(TDC1190 && my_tdc_WD.size()) {

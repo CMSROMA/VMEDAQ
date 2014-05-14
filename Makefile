@@ -8,9 +8,11 @@
 # daq for the CAEN bridge v1718
 
 
-OBJS = adc265_lib.o adc792_lib.o tdc1190_lib.o tdcV488A_lib.o v1718_lib.o vme_bridge.o V513_lib.o V262_lib.o scaler560_lib.o V1742_lib.o V814_lib.o  X742CorrectionRoutines.o
+OBJS = adc265_lib.o adc792_lib.o tdc1190_lib.o tdcV488A_lib.o v1718_lib.o vme_bridge.o V513_lib.o V262_lib.o scaler560_lib.o V814_lib.o  
 
-BINS = acquire count testDigitizer
+OBJS_CAENCOMM = V814_lib_CAENComm.o X742CorrectionRoutines.o V1742_lib.o 
+
+BINS = acquire count acquireDigitizer
 
 INCLUDE_DIR = .
 
@@ -19,13 +21,13 @@ COPTS = -g -Wall -DLINUX -fPIC -I$(INCLUDE_DIR)
 all: $(BINS)
 
 acquire: $(OBJS) main_acquisition.o 
-	g++ -g -DLINUX -o acquire $(OBJS) -lncurses -lm -l CAENVME -lCAENComm -lCAENDigitizer main_acquisition.o
-
-testDigitizer: $(OBJS) testDigitizer.o
-	g++ -g -DLINUX -o testDigitizer $(OBJS) -lncurses -lm -l CAENVME -lCAENComm -lCAENDigitizer testDigitizer.o
+	g++ -g -DLINUX -o acquire $(OBJS) -lncurses -lm -l CAENVME main_acquisition.o
 
 count: $(OBJS) simple_count.o
-	g++ -g -DLINUX -o count $(OBJS) -lncurses -lm -l CAENVME -lCAENComm -lCAENDigitizer simple_count.o
+	g++ -g -DLINUX -o count $(OBJS) -lncurses -lm -l CAENVME simple_count.o
+
+acquireDigitizer: $(OBJS_CAENCOMM) testDigitizer.o
+	g++ -g -DLINUX -o acquireDigitizer $(OBJS_CAENCOMM) -lncurses -lm -l CAENVME -lCAENComm -lCAENDigitizer testDigitizer.o
 
 main_acquisition.o: main_acquisition.c main_acquisition.h
 	g++ $(COPTS) -c main_acquisition.c
@@ -65,6 +67,9 @@ V1742_lib.o: V1742_lib.c V1742_lib.h
 
 V814_lib.o: V814_lib.c V814_lib.h 
 	g++ $(COPTS) -c V814_lib.c
+
+V814_lib_CAENComm.o: V814_lib_CAENComm.c V814_lib_CAENComm.h 
+	g++ $(COPTS) -c V814_lib_CAENComm.c
 
 vme_bridge.o: vme_bridge.c $(INCLUDE_DIR)/vme_bridge.h 	
 	g++ $(COPTS) -c vme_bridge.c	

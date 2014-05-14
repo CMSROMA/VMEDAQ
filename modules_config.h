@@ -5,3 +5,6 @@
 #define V262_0_BA 0x380000 //Slot 7
 #define V560_0_BA 0x400000 //Slot 8
 
+#define VME_DEVICE_ID 1 //Beware this number can flip from 0 to 1 after reboot. Change it in case of problems connecting
+#define VME_LINK_ID 0
+
