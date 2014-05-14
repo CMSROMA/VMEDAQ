@@ -10,7 +10,7 @@
 
 OBJS = adc265_lib.o adc792_lib.o tdc1190_lib.o tdcV488A_lib.o v1718_lib.o vme_bridge.o V513_lib.o V262_lib.o scaler560_lib.o V814_lib.o  
 
-OBJS_CAENCOMM = V814_lib_CAENComm.o X742CorrectionRoutines.o V1742_lib.o 
+OBJS_CAENCOMM = V814_lib_CAENComm.o V262_lib_CAENComm.o adc792_lib_CAENComm.o X742CorrectionRoutines.o V1742_lib.o 
 
 BINS = acquire count acquireDigitizer
 
@@ -70,6 +70,12 @@ V814_lib.o: V814_lib.c V814_lib.h
 
 V814_lib_CAENComm.o: V814_lib_CAENComm.c V814_lib_CAENComm.h 
 	g++ $(COPTS) -c V814_lib_CAENComm.c
+
+V262_lib_CAENComm.o: V262_lib_CAENComm.c V262_CAENComm.h 
+	g++ $(COPTS) -c V262_lib_CAENComm.c
+
+adc792_lib_CAENComm.o: adc792_lib_CAENComm.c adc792_lib_CAENComm.h 
+	g++ $(COPTS) -c adc792_lib_CAENComm.c
 
 vme_bridge.o: vme_bridge.c $(INCLUDE_DIR)/vme_bridge.h 	
 	g++ $(COPTS) -c vme_bridge.c	

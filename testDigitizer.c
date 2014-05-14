@@ -10,6 +10,7 @@
 #include "modules_config.h"
 #include "V1742_lib.h"
 #include "V814_lib_CAENComm.h"
+#include "V262_CAENComm.h"
 
 
 #include <fstream>
@@ -33,6 +34,13 @@ int main(int argc, char** argv)
     return(1); 
   }
 
+  int handleV262;
+  ret*=(1-CAENComm_OpenDevice((CAENComm_ConnectionType) 0,1,0,0x00380000,&handleV262));
+  if (ret != 1) { 
+    printf("Error opening I/O V262... STOP!\n");
+    return(1); 
+  }
+
   printf("V1742 digitizer initialization\n");
   ret*=(1-init_V1742(handleV1742));
   if (ret != 1)
@@ -48,6 +56,15 @@ int main(int argc, char** argv)
     printf("Error in DISCR 814 initialization... STOP!\n");
     return(1); 
   }
+
+  printf("V262 IO register initialization\n");
+  ret *=OutCh_V262_CAENCOMM(handleV262,1,1); 
+  printf("V262: trigger beam is %d\n",1);
+  if (ret != 1) 
+    {
+      printf("Error setting the beam trigger veto... STOP!\n");
+      return(1);
+    }
 
   printf("read digitizer\n");
   ret*=(1-read_V1742(handleV1742));
