@@ -4,8 +4,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-#include <sys/time.h> 
-#include <time.h> 
 
 //I'd like to get rid of those!!!
 #include "my_vmeio.h"
@@ -13,6 +11,8 @@
 
 //Bridge!
 #include "vme_bridge.h"
+
+#include "time_utils.h"
 
 #include "main_acquisition.h" 
 #include "tdc1190_lib.h"
@@ -26,6 +26,7 @@
 #include "V814_lib.h"
 #include "V1742_lib.h"
 #include "V262.h"
+#include "CAENComm.h"
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -33,27 +34,12 @@
 #define update_scaler 0
 using namespace std;
 
-time_t ref_time;
 
-long gettimestamp(struct timeval *time)
-{
-  long time_msec;
-  time_msec=(time->tv_sec-ref_time)*1000;
-  time_msec+=time->tv_usec/1000;
-  return time_msec;
-}
-
-long timevaldiff(struct timeval *starttime, struct timeval *finishtime)
-{
-  long usec;
-  usec=(finishtime->tv_sec-starttime->tv_sec)*1000000;
-  usec+=(finishtime->tv_usec-starttime->tv_usec);
-  return usec;
-}
 
 
 int main(int argc, char** argv)
 {
+
   unsigned long  max_evts=9000;
   int nevent = 0;
   short daq_status, status_init;
@@ -72,13 +58,11 @@ int main(int argc, char** argv)
   float pedestal_freq=0;
   bool beam_trigger=0;
 
-  //Reference time 2014-04-01 00:00:00
-  tm ref_date;
   ref_date.tm_hour = 0;
   ref_date.tm_min = 0;
   ref_date.tm_sec = 0;
   ref_date.tm_year = 114;
-  ref_date.tm_mon = 3;
+  ref_date.tm_mon = 4;
   ref_date.tm_mday = 1;
   ref_time=mktime(&ref_date);
 
@@ -125,19 +109,29 @@ int main(int argc, char** argv)
   if (f_value != NULL) printf("file = \"%s\"\n", f_value);
   if(n_value) max_evts = n_value;
 
+
+  /* int handle; */
+  /* int ret = CAENComm_OpenDevice((CAENComm_ConnectionType) 0,1,0,0x500000,&handle); */
+  /* ret = CAENComm_CloseDevice(handle); */
+  /* ret = CAEN_DGTZ_OpenDigitizer((CAEN_DGTZ_ConnectionType) 0,1,0,0x500000,&handle); */
+  /* //  ret = CAEN_DGTZ_OpenDigitizer((CAEN_DGTZ_ConnectionType) 0,1,0,0x500000,&handle); */
+  /* printf("Opened V1742 %d\n",ret); */
+  /* init_V1742(handle); */
+
   /* Bridge VME initialization */
-  status_init = bridge_init(BHandle);
-  bridge_deinit(BHandle);
+  status_init = bridge_init(BHandle); 
+  bridge_deinit(BHandle); 
   status_init = bridge_init(BHandle);
 
-  /* VME deinitialization */
-  printf("VME initialization\n");
-  if (status_init != 1) 
-    {
-      printf("VME Initialization error ... STOP!\n");
-      return(1);
-    }
-  
+  /* /\* VME deinitialization *\/ */
+  /* printf("VME initialization\n"); */
+  /* if (status_init != 1)  */
+  /*   { */
+  /*     printf("VME Initialization error ... STOP!\n"); */
+  /*     return(1); */
+  /*  } */
+
+
   /* Modules initialization */
   if(V1718)
     {
@@ -235,16 +229,16 @@ int main(int argc, char** argv)
       }
   }
 
-  /* Digitizer V1742 initialization */
+
   if (DIG1742)
     {
-      printf("V1742 digitizer initialization\n");
-      status_init *= 1-init_V1742();
-      if (status_init != 1) 
-	{
-	  printf("Error initializing V1742... STOP!\n");
-	  return(1);
-	}
+      /* printf("V1742 digitizer initialization\n"); */
+      /* status_init *= 1-init_V1742(); */
+      /* if (status_init != 1)  */
+      /* 	{ */
+      /* 	  printf("Error initializing V1742... STOP!\n"); */
+      /* 	  return(1); */
+      /* 	} */
     }
 
   /* IO 262 initialization */
@@ -353,6 +347,7 @@ int main(int argc, char** argv)
       }
 
 
+
       if (!beam_trigger && IO262 && pedestal_freq>0)
 	{
 	  float usec_delay=1.E6/(pedestal_freq);
@@ -404,6 +399,8 @@ int main(int argc, char** argv)
 	if((nevent != hm_evt_read) || !hiScale)
 	  read_boards = true;
       }
+
+ 
 
       if(read_boards) {
 	nreadout++;
@@ -488,6 +485,7 @@ int main(int argc, char** argv)
 	  if (d_value) std::cout << "ADC 792:: WORDS " << adc792Words << std::endl;
 	}
 
+
 	/* read the ADC 792 n.2*/
 	if(ADC792_2) {
 	  my_adc792_2_OD.clear();
@@ -521,17 +519,19 @@ int main(int argc, char** argv)
 	}
 
 	/* read the Digitizer 1742*/
-	if(DIG1742) {
-	  my_dig1742_OD.clear();
-	  daq_status = 1 - read_V1742(hm_evt_read,my_dig1742_OD);
-	  if (daq_status != 1) 
-	    {
-	      printf("\nError reading DIGI 1742... STOP!\n");
-	      return(1);
-	    }
+	/* if(DIG1742) { */
+	/*   my_dig1742_OD.clear(); */
+	/*   printf("Hello\n"); */
+	/*   daq_status = 1 - read_V1742(handle,hm_evt_read,my_dig1742_OD); */
+	/*   if (daq_status != 1)  */
+	/*     { */
+	/*       printf("\nError reading DIGI 1742... STOP!\n"); */
+	/*       return(1); */
+	/*     } */
 
-	  board_num += 128;
-	}
+	/*   board_num += 128; */
+	/* } */
+	
 
 	/* read the SCALER 560 EACH event*/
 	if(SCALER560 && update_scaler) {
@@ -670,22 +670,22 @@ int main(int argc, char** argv)
 
 	  }
 
-	  int eventSize_dig1742=0;
-	  if (DIG1742)
-	    {
-	      if (ie<(int)my_dig1742_OD.size())
-		{
-		  daq_status *= writeEventToOutputBuffer_V1742(&my_Dig_Event,&((my_dig1742_OD[ie]).eventInfo),&((my_dig1742_OD[ie]).event));
-		  if (my_Dig_Event.size()>0)
-		    {
-		      eventSize_dig1742=my_Dig_Event.size();
-		      cout<<"This V1742 event " << ie << " has "<<eventSize_dig1742<<" words"<<endl;
-		    }
-		}
-	      else
-		cout<<"V1742::ERROR::DATA ARE CORRUPTED" <<endl;
-	      myOE.push_back(eventSize_dig1742);
-	    }
+	  /* int eventSize_dig1742=0; */
+	  /* if (DIG1742) */
+	  /*   { */
+	  /*     if (ie<(int)my_dig1742_OD.size()) */
+	  /* 	{ */
+	  /* 	  daq_status *= writeEventToOutputBuffer_V1742(&my_Dig_Event,&((my_dig1742_OD[ie]).eventInfo),&((my_dig1742_OD[ie]).event)); */
+	  /* 	  if (my_Dig_Event.size()>0) */
+	  /* 	    { */
+	  /* 	      eventSize_dig1742=my_Dig_Event.size(); */
+	  /* 	      cout<<"This V1742 event " << ie << " has "<<eventSize_dig1742<<" words"<<endl; */
+	  /* 	    } */
+	  /* 	} */
+	  /*     else */
+	  /* 	cout<<"V1742::ERROR::DATA ARE CORRUPTED" <<endl; */
+	  /*     myOE.push_back(eventSize_dig1742); */
+	  /*   } */
 
 	  
 	  if(TDC1190) {
@@ -898,14 +898,14 @@ int main(int argc, char** argv)
     std::cout << "V560:: channel " << i << " has " << tmpscaD[i] << " counts" << std::endl;
   fflush(stdout);
 
-  if(DIG1742) {
-    daq_status = 1 - stop_V1742();
-    if (daq_status != 1) 
-      {
-	printf("\nError stopping DIGI 1742... STOP!\n");
-	return(1);
-      }
-  }
+  /* if(DIG1742) { */
+  /*   daq_status = 1 - stop_V1742(handle); */
+  /*   if (daq_status != 1)  */
+  /*     { */
+  /* 	printf("\nError stopping DIGI 1742... STOP!\n"); */
+  /* 	return(1); */
+  /*     } */
+  /* } */
 
   /* Output File finalization */  
   printf("\n Closing output file!\n");

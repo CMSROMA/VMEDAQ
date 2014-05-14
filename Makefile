@@ -10,7 +10,7 @@
 
 OBJS = adc265_lib.o adc792_lib.o tdc1190_lib.o tdcV488A_lib.o v1718_lib.o vme_bridge.o V513_lib.o V262_lib.o scaler560_lib.o V1742_lib.o V814_lib.o  X742CorrectionRoutines.o
 
-BINS = acquire count
+BINS = acquire count testDigitizer
 
 INCLUDE_DIR = .
 
@@ -21,11 +21,17 @@ all: $(BINS)
 acquire: $(OBJS) main_acquisition.o 
 	g++ -g -DLINUX -o acquire $(OBJS) -lncurses -lm -l CAENVME -lCAENComm -lCAENDigitizer main_acquisition.o
 
+testDigitizer: $(OBJS) testDigitizer.o
+	g++ -g -DLINUX -o testDigitizer $(OBJS) -lncurses -lm -l CAENVME -lCAENComm -lCAENDigitizer testDigitizer.o
+
 count: $(OBJS) simple_count.o
 	g++ -g -DLINUX -o count $(OBJS) -lncurses -lm -l CAENVME -lCAENComm -lCAENDigitizer simple_count.o
 
 main_acquisition.o: main_acquisition.c main_acquisition.h
 	g++ $(COPTS) -c main_acquisition.c
+
+testDigitizer.o: testDigitizer.c
+	g++ $(COPTS) -c testDigitizer.c
 
 simple_count.o: simple_count.c
 	g++ $(COPTS) -c simple_count.c

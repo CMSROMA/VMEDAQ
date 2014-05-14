@@ -27,8 +27,8 @@ int bridge_init(int32_t &BHandle) {
     printf("VME initialized \n");
   }
 
-  CAENVME_SystemReset(BHandle);
-  usleep(10000);
+  /* CAENVME_SystemReset(BHandle); */
+  /* usleep(10000); */
 
   status = 1;
   caenst = CAENVME_ReadRegister(BHandle, cvStatusReg, &DataShort);

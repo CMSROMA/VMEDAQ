@@ -73,7 +73,7 @@ TRIGGER_EDGE  FALLING
 
 # USE_INTERRUPT: number of events that must be ready for the readout when the IRQ is asserted.
 # Zero means that the interrupts are not used (readout runs continuously)
-#USE_INTERRUPT 0
+USE_INTERRUPT 0
 
 # FPIO_LEVEL: type of the front panel I/O LEMO connectors 
 # options: NIM, TTL
