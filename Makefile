@@ -77,10 +77,9 @@ vme_bridge.o: vme_bridge.c $(INCLUDE_DIR)/vme_bridge.h
 X742CorrectionRoutines.o:  X742CorrectionRoutines.h  X742CorrectionRoutines.c
 	g++ $(COPTS) -c  X742CorrectionRoutines.c		
 clean:
-	-rm -f acquire
-	-rm -f count
 	-rm -f #*#
 	-rm -f *~
 	-rm -f core
+	-rm -f $(BINS)
 	-rm -f $(OBJS)
-
+	-rm -f $(OBJS_CAENCOMM)
