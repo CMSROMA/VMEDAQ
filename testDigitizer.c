@@ -11,6 +11,7 @@
 #include "V1742_lib.h"
 #include "V814_lib_CAENComm.h"
 #include "V262_CAENComm.h"
+#include "adc792_lib_CAENComm.h"
 
 
 #include <fstream>
@@ -34,12 +35,19 @@ int main(int argc, char** argv)
     return(1); 
   }
 
-  int handleV262;
-  ret*=(1-CAENComm_OpenDevice((CAENComm_ConnectionType) 0,1,0,0x00380000,&handleV262));
+  int handleV792;
+  ret*=(1-CAENComm_OpenDevice((CAENComm_ConnectionType) 0,1,0,V792_0_BA,&handleV792));
   if (ret != 1) { 
-    printf("Error opening I/O V262... STOP!\n");
+    printf("Error opening ADC 792... STOP!\n");
     return(1); 
   }
+
+  /* int handleV262; */
+  /* ret*=(1-CAENComm_OpenDevice((CAENComm_ConnectionType) 0,1,0,0x00380000,&handleV262)); */
+  /* if (ret != 1) {  */
+  /*   printf("Error opening I/O V262... STOP!\n"); */
+  /*   return(1);  */
+  /* } */
 
   printf("V1742 digitizer initialization\n");
   ret*=(1-init_V1742(handleV1742));
@@ -57,14 +65,23 @@ int main(int argc, char** argv)
     return(1); 
   }
 
-  printf("V262 IO register initialization\n");
-  ret *=OutCh_V262_CAENCOMM(handleV262,1,1); 
-  printf("V262: trigger beam is %d\n",1);
+  printf("V792 ADC initialization\n");
+  ret *= init_adc792_CAENCOMM(handleV792); //Initialize the first card
   if (ret != 1) 
     {
-      printf("Error setting the beam trigger veto... STOP!\n");
+      printf("Error in ADC 792 initialization... STOP!\n");
       return(1);
     }
+  
+
+  /* printf("V262 IO register initialization\n"); */
+  /* ret *=OutCh_V262_CAENCOMM(handleV262,1,1);  */
+  /* printf("V262: trigger beam is %d\n",1); */
+  /* if (ret != 1)  */
+  /*   { */
+  /*     printf("Error setting the beam trigger veto... STOP!\n"); */
+  /*     return(1); */
+  /*   } */
 
   printf("read digitizer\n");
   ret*=(1-read_V1742(handleV1742));

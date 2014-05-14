@@ -86,14 +86,14 @@ unsigned short init_adc792_CAENCOMM(int32_t BHandle) {
   address =  0x1000;
   caenst = CAENComm_Read16(BHandle,address,&DataLong);
   status *= (1-caenst); 
-  
+  printf("HELLO!!\n");
   if(status != 1) {
     printf("Error READING V792N_CAENCOMM firmware -> address= %ld \n",address);
     return status;
   }
   else {
     if(adc792_CAENCOMM_debug) printf("V792N_CAENCOMM firmware is version:  %d \n",DataLong);
-    }
+  }
 
     //Bit set register
     address =  0x1006;
@@ -103,7 +103,7 @@ unsigned short init_adc792_CAENCOMM(int32_t BHandle) {
     caenst = CAENComm_Read16(BHandle,address,&DataLong);
     status *= (1-caenst); 
     if(status != 1) {
-      printf("Bit Set Register read: %d\n", DataLong);
+      printf("ERROR: Bit Set Register read: %d\n", DataLong);
       return status;
     }
     
@@ -116,7 +116,7 @@ unsigned short init_adc792_CAENCOMM(int32_t BHandle) {
     caenst = CAENComm_Read16(BHandle,address,&DataLong);
     status *= (1-caenst); 
     if(status != 1) {
-      printf("Bit Set Register read: %d\n", DataLong);
+      printf("ERROR: Bit Set Register read: %d\n", DataLong);
       return status;
     }
     
@@ -128,7 +128,7 @@ unsigned short init_adc792_CAENCOMM(int32_t BHandle) {
     caenst = CAENComm_Read16(BHandle,address,&DataLong);
     status *= (1-caenst); 
     if(status != 1) {
-      printf("Bit Clear Register read: %d\n", DataLong);
+      printf("ERROR: Bit Clear Register read: %d\n", DataLong);
       return status;
     }
     
@@ -140,7 +140,7 @@ unsigned short init_adc792_CAENCOMM(int32_t BHandle) {
       caenst = CAENComm_Write16(BHandle,address,DataLong);
       status *= (1-caenst); 
       if(status != 1) {
-	printf("Could not disable ZS: %d\n", DataLong);
+	printf("ERROE: Could not disable ZS: %d\n", DataLong);
 	return status;
       }
     } else {
@@ -149,7 +149,7 @@ unsigned short init_adc792_CAENCOMM(int32_t BHandle) {
       caenst = CAENComm_Write16(BHandle,address,DataLong);
       status *= (1-caenst); 
       if(status != 1) {
-	printf("Could not enable ZS: %d\n", DataLong);
+	printf("ERROR: Could not enable ZS: %d\n", DataLong);
 	return status;
       }
     }
@@ -164,7 +164,7 @@ unsigned short init_adc792_CAENCOMM(int32_t BHandle) {
       status *= (1-caenst); 
       if(adc792_CAENCOMM_debug) printf("Iped register read: %d\n", DataLong);
       if(status != 1) {
-	printf("Threshold register read: %d\n", DataLong);
+	printf("ERROR: Threshold register read: %d\n", DataLong);
 	return status;
       }
     }
@@ -183,7 +183,7 @@ unsigned short init_adc792_CAENCOMM(int32_t BHandle) {
     
     
      if(status != 1) {
-      printf("Iped register read: %d\n", DataLong);
+      printf("ERROR: Iped register read: %d\n", DataLong);
       return status;
     }
 
