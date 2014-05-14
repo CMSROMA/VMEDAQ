@@ -130,7 +130,7 @@ unsigned short busy_V513_CAENCOMM(int32_t BHandle, int ordine)
 
   address = V513_CAENCOMM_ADDRESS + 0x04; /* address of the write register */
   if(ordine==DAQ_BUSY_ON)
-    { DataLong = 0x2; }  /*  2nd bit of the word written in the write register : chan #1 on */
+    { DataLong = 0x1; }  /*  2nd bit of the word written in the write register : chan #1 on */
   else
     {DataLong = 0x0 ;}
   //  status = vme_write_dt(address, point2data, V513_CAENCOMM_AM,V513_CAENCOMM_DS);

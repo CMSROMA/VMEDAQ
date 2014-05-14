@@ -14,7 +14,6 @@
 #include "V513_CAENComm.h"
 #include "adc792_lib_CAENComm.h"
 
-
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -95,6 +94,21 @@ int main(int argc, char** argv)
     }
   
 
+  int i=0;
+  while(i<10000)
+    {
+      printf("%d\n",i);
+      bool trigger=false;
+      ret *= reset_daq(handleV513);
+      ret *= clear_strobe_V513_CAENCOMM(handleV513); 
+      while(!trigger)
+	{
+	  trigger = trigger_V513_CAENCOMM(handleV513);
+	}
+      usleep(500);
+      ++i;
+    }
+  
   /* printf("V262 IO register initialization\n"); */
   /* ret *=OutCh_V262_CAENCOMM(handleV262,1,1);  */
   /* printf("V262: trigger beam is %d\n",1); */
@@ -104,7 +118,7 @@ int main(int argc, char** argv)
   /*     return(1); */
   /*   } */
 
-  printf("read digitizer\n");
-  ret*=(1-read_V1742(handleV1742));
-  ret*=(1-stop_V1742(handleV1742));
+  /* printf("read digitizer\n"); */
+  /* ret*=(1-read_V1742(handleV1742)); */
+  /* ret*=(1-stop_V1742(handleV1742)); */
 }
