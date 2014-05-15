@@ -75,19 +75,35 @@ unsigned short init_V513_CAENCOMM(int32_t BHandle)
 /* 
     Reset the DAQ sending a pulse on the 0 channel of the IO
 */
-unsigned short reset_daq(int32_t BHandle)
+unsigned short reset_busy_V513_CAENCOMM(int32_t BHandle, int triggerMask)
 {
   unsigned short status(1),caenst;
   unsigned long address;
   uint16_t DataLong;
 
   address = V513_CAENCOMM_ADDRESS + 0x04; /* address of the write register */
-  DataLong = 0x1; 
+  //  DataLong = triggerMask;
+  DataLong = 0x3;
   //status = vme_write_dt(address, point2data, V513_CAENCOMM_AM,V513_CAENCOMM_DS);
   caenst = CAENComm_Write16(BHandle,address,DataLong);
   status *= (1-caenst); 
-  DataLong = 0x0 ;
+  //  DataLong = triggerMask;
+  DataLong = 0x2;
   //  status = vme_write_dt(address, point2data, V513_CAENCOMM_AM,V513_CAENCOMM_DS);
+  caenst = CAENComm_Write16(BHandle,address,DataLong);
+  status *= (1-caenst); 
+  return(status);
+}
+
+unsigned short write_Register_V513_CAENCOMM(int32_t BHandle, int triggerMask)
+{
+  unsigned short status(1),caenst;
+  unsigned long address;
+  uint16_t DataLong;
+
+  address = V513_CAENCOMM_ADDRESS + 0x04; /* address of the write register */
+  DataLong = triggerMask;
+  //status = vme_write_dt(address, point2data, V513_CAENCOMM_AM,V513_CAENCOMM_DS);
   caenst = CAENComm_Write16(BHandle,address,DataLong);
   status *= (1-caenst); 
   return(status);

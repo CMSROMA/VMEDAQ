@@ -1017,8 +1017,8 @@ int init_V1742(int handle)
 /* } */
     
 
-//int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& events)
-int read_V1742(int handle)
+int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& events)
+//int read_V1742(int handle)
 {
   printf("Start read\n");
   CAEN_DGTZ_ErrorCode ret=CAEN_DGTZ_Success;

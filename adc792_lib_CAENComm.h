@@ -45,7 +45,7 @@ unsigned short dataReset792_CAENCOMM(int32_t BHandle);
 unsigned short softReset792_CAENCOMM(int32_t BHandle);
 /* std::vector<int> read_adc792_CAENCOMM(int32_t BHandle, short int& status); */
 /* std::vector<int> readFastadc792_CAENCOMM(int32_t BHandle, int idB, short int& status); */
-std::vector<int> readFastNadc792_CAENCOMM(int32_t BHandle, int idB, short int& status, int nevts, std::vector<int> &outW);
+std::vector<int> readFastNadc792_CAENCOMM(int32_t BHandle, short int& status, int nevts, std::vector<int> &outW);
 
 struct a792_CAENCOMM_shift{
   int datareg;

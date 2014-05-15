@@ -229,7 +229,8 @@ vector<int> readFastNadc792_CAENCOMM(int32_t BHandle, short int& status, int nev
   int caenst;
 
   //AS  unsigned long dataV[34];
-  unsigned int dataV[34*nevts]; //each event is composed of 34x32bit words
+  uint32_t* dataV; //each event is composed of 34x32bit words
+  dataV=new uint32_t[1000];
   unsigned int wr;
   unsigned long adc792_CAENCOMM_rdy, adc792_CAENCOMM_busy;
   unsigned int ncha(32), idV; //no ZS reading all 32 channels
@@ -277,19 +278,20 @@ vector<int> readFastNadc792_CAENCOMM(int32_t BHandle, short int& status, int nev
 
     //Vector reset
     idV = 0; while(idV<(ncha+2)*nevts) { dataV[idV] = 0; idV++; }
-    wr = (ncha+2)*4*nevts; 
-    //    wr = sizeof(dataV);
+    //    wr = (ncha+2)*4*nevts; 
+    wr = (ncha+2)*sizeof(dataV)*nevts;
 
-    caenst =  CAENComm_BLTRead(BHandle,address,dataV,wr,&nbytes_tran);
+    printf("HELLO %d\n",wr);
+    caenst =  CAENComm_BLTRead(BHandle,0x0,dataV,wr,&nbytes_tran);
     status *= (1-caenst); 
-
+    printf("%d\n",nbytes_tran);
     //Vector dump into output
     idV = 0; while(idV<(ncha+2)*nevts) { 
       outD.push_back((int)dataV[idV]); 
       //   if (adc792_CAENCOMM_debug) print_adc792_CAENCOMM_debug_word(dataV[idV]);
       idV++;  
     }
-
+    delete dataV;
 
     /*
     int ntry = 100, nt = 0;

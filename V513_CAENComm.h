@@ -7,7 +7,8 @@ using namespace std;
 
 unsigned short init_V513_CAENCOMM(int32_t BHandle); 
 unsigned short trigger_V513_CAENCOMM(int32_t BHandle);
-unsigned short reset_daq(int32_t BHandle);
+unsigned short reset_busy_V513_CAENCOMM(int32_t BHandle, int triggerMask);
+unsigned short write_Register_V513_CAENCOMM(int32_t BHandle, int triggerMask);
 unsigned short clear_strobe_V513_CAENCOMM(int32_t BHandle);
 unsigned short read_V513_CAENCOMM_old(int32_t BHandle,unsigned short*);
 vector <int> read_V513_CAENCOMM(int32_t BHandle,unsigned short*);

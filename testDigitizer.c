@@ -65,10 +65,6 @@ int main(int argc, char** argv)
       return(1);
     }
 
-
-
-
-
   printf("V1742 digitizer initialization\n");
   ret*=(1-init_V1742(handleV1742));
   if (ret != 1)
@@ -94,18 +90,38 @@ int main(int argc, char** argv)
     }
   
 
+  int triggerMask = (1 << 1); //put to 1 bit 1 veto beam triggers;
+  write_Register_V513_CAENCOMM(handleV513,triggerMask);
+  /* sleep(10); */
+
   int i=0;
-  while(i<10000)
+  int adc792Words;
+  short daq_status;
+  int hm_evt_read=1;
+
+  vector<int> my_adc792_OD, my_adc792_WD;
+  while(i<100)
     {
       printf("%d\n",i);
       bool trigger=false;
-      ret *= reset_daq(handleV513);
+      ret *= reset_busy_V513_CAENCOMM(handleV513,triggerMask);
       ret *= clear_strobe_V513_CAENCOMM(handleV513); 
       while(!trigger)
 	{
 	  trigger = trigger_V513_CAENCOMM(handleV513);
 	}
-      usleep(500);
+      my_adc792_OD.clear();
+      my_adc792_WD.clear();
+      //my_adc792_OD = read_adc792(BHandle,daq_status); 
+      //	  my_adc792_OD = readFastadc792(BHandle,0,daq_status); 
+      my_adc792_OD = readFastNadc792_CAENCOMM(handleV792,daq_status,hm_evt_read,my_adc792_WD); 
+      //	  if(!my_adc792_OD.size())  cout<<" Warning:: QDC0 Read :: "<< my_adc792_OD.size()<<" "<< my_adc792_WD.size()<<endl;
+      if (daq_status != 1) 
+	{
+	  printf("\nError reading ADC 792... STOP!\n");
+	  return(1);
+	}
+      adc792Words = my_adc792_OD.size();
       ++i;
     }
   
