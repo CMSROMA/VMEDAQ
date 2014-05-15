@@ -1029,8 +1029,6 @@ int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& eve
   //, Nb=0, Ne=0;
   uint32_t BufferSize, NumEvents,Nb=0,Ne=0;
 
-  uint64_t CurrentTime, PrevRateTime, ElapsedTime;
-
   CAEN_DGTZ_EventInfo_t       EventInfo;
   
   char *v1742_buffer;
@@ -1072,111 +1070,106 @@ int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& eve
     return ErrCode;
   }
 
-  PrevRateTime=get_time();
+  /* /\* //Wait for interrupt (if enabled) *\/ */
+  /* if (WDcfg.InterruptNumEvents > 0) { */
+  /* 	int32_t boardId; */
+  /* 	int VMEHandle; */
+  /* 	int InterruptMask = (1 << VME_INTERRUPT_LEVEL); */
   
-  int old_events=0;
-  while (Ne<1000)
+  /* 	// Interrupt handling */
+  /* 	ret = CAEN_DGTZ_VMEIRQWait ((CAEN_DGTZ_ConnectionType) WDcfg.LinkType, WDcfg.LinkNum, WDcfg.ConetNode , InterruptMask, INTERRUPT_TIMEOUT, &VMEHandle); */
+  /* 	if (ret == CAEN_DGTZ_Timeout)  // No active interrupt requests */
+  /* 	  goto InterruptTimeout; */
+  /* 	if (ret != CAEN_DGTZ_Success)  { */
+  /* 	  ErrCode = ERR_INTERRUPT; */
+  /* 	  return ErrCode; */
+  /* 	} */
+  /* 	// Interrupt Ack */
+  /* 	ret = CAEN_DGTZ_VMEIACKCycle(VMEHandle, VME_INTERRUPT_LEVEL, &boardId); */
+  /* 	if ((ret != CAEN_DGTZ_Success) || (boardId != VME_INTERRUPT_STATUS_ID)) { */
+  /* 	  goto InterruptTimeout; */
+  /* 	} else { */
+  /* 	  if (INTERRUPT_MODE == CAEN_DGTZ_IRQ_MODE_ROAK) */
+  /* 	    ret = CAEN_DGTZ_RearmInterrupt(handle); */
+  /* 	} */
+  /* } */
+  
+  BufferSize = 0;
+  NumEvents = 0;
+  
+  ret = CAEN_DGTZ_ReadData(handle, CAEN_DGTZ_SLAVE_TERMINATED_READOUT_MBLT, v1742_buffer, &BufferSize);
+  if (ret) {
+    
+    ErrCode = ERR_READOUT;
+    return ErrCode;
+  }
+  
+  NumEvents = 0;
+  if (BufferSize != 0) {
+    ret = CAEN_DGTZ_GetNumEvents(handle, v1742_buffer, BufferSize, &NumEvents);
+    if (ret) {
+      ErrCode = ERR_READOUT;
+      return ErrCode;
+    }
+  }
+  
+      
+  if (nevents != NumEvents)
     {
-      /* /\* //Wait for interrupt (if enabled) *\/ */
-      /* if (WDcfg.InterruptNumEvents > 0) { */
-      /* 	int32_t boardId; */
-      /* 	int VMEHandle; */
-      /* 	int InterruptMask = (1 << VME_INTERRUPT_LEVEL); */
-	
-      /* 	// Interrupt handling */
-      /* 	ret = CAEN_DGTZ_VMEIRQWait ((CAEN_DGTZ_ConnectionType) WDcfg.LinkType, WDcfg.LinkNum, WDcfg.ConetNode , InterruptMask, INTERRUPT_TIMEOUT, &VMEHandle); */
-      /* 	if (ret == CAEN_DGTZ_Timeout)  // No active interrupt requests */
-      /* 	  goto InterruptTimeout; */
-      /* 	if (ret != CAEN_DGTZ_Success)  { */
-      /* 	  ErrCode = ERR_INTERRUPT; */
-      /* 	  return ErrCode; */
-      /* 	} */
-      /* 	// Interrupt Ack */
-      /* 	ret = CAEN_DGTZ_VMEIACKCycle(VMEHandle, VME_INTERRUPT_LEVEL, &boardId); */
-      /* 	if ((ret != CAEN_DGTZ_Success) || (boardId != VME_INTERRUPT_STATUS_ID)) { */
-      /* 	  goto InterruptTimeout; */
-      /* 	} else { */
-      /* 	  if (INTERRUPT_MODE == CAEN_DGTZ_IRQ_MODE_ROAK) */
-      /* 	    ret = CAEN_DGTZ_RearmInterrupt(handle); */
-      /* 	} */
-      /* } */
-      
-      BufferSize = 0;
-      NumEvents = 0;
-      
-      ret = CAEN_DGTZ_ReadData(handle, CAEN_DGTZ_SLAVE_TERMINATED_READOUT_MBLT, v1742_buffer, &BufferSize);
-      if (ret) {
-	
-	ErrCode = ERR_READOUT;
-	return ErrCode;
-      }
+      ErrCode = ERR_MISMATCH_EVENTS;
+      return ErrCode;
+    }
+  
+  /* Nb += BufferSize;  */
+  /* Ne += NumEvents; */
+  /* CurrentTime=get_time(); */
+  /* ElapsedTime=CurrentTime-PrevRateTime; */
+  
+  //      
+  
+  /* /\* nCycles++; *\/ */
+  /* if (Ne%10==0) { */
+  /* /\*   if (Nb == 0) *\/ */
+  /* /\*     if (ret == CAEN_DGTZ_Timeout) printf ("Timeout...\n"); else printf("No data...\n"); *\/ */
 
-      NumEvents = 0;
-      if (BufferSize != 0) {
-	ret = CAEN_DGTZ_GetNumEvents(handle, v1742_buffer, BufferSize, &NumEvents);
-	if (ret) {
-	  ErrCode = ERR_READOUT;
-	  return ErrCode;
-	}
-      }
-      
-      
-      /* if (nevents != NumEvents) */
-      /*   { */
-      /*     ErrCode = ERR_MISMATCH_EVENTS; */
-      /*     return ErrCode; */
-      /*   } */
-
-      Nb += BufferSize; 
-      Ne += NumEvents;
-      CurrentTime=get_time();
-      ElapsedTime=CurrentTime-PrevRateTime;
-      
-      //      
-
-      /* /\* nCycles++; *\/ */
-      /* if (Ne%10==0) { */
-      /* /\*   if (Nb == 0) *\/ */
-      /* /\*     if (ret == CAEN_DGTZ_Timeout) printf ("Timeout...\n"); else printf("No data...\n"); *\/ */
-
-
-      /* /\*   nCycles= 0; *\/ */
-      /* /\*   Nb = 0; *\/ */
-      /* /\*   Ne = 0; *\/ */
-      /* 	PrevRateTime = CurrentTime; */
-      /* } */
-      
-      /* Analyze data */
-      for(i = 0; i < (int)NumEvents; i++) {
-	/* Get one event from the readout buffer */
-	ret = CAEN_DGTZ_GetEventInfo(handle, v1742_buffer, BufferSize, i, &EventInfo, &v1742_eventPtr);
-	if (ret) {
-	  ErrCode = ERR_EVENT_BUILD;
-	  return ErrCode;
-	}
-	/* decode the event */
-	if (WDcfg.Nbit == 8) 
-	  ret = CAEN_DGTZ_DecodeEvent(handle, v1742_eventPtr, (void**)&Event8);
-	else if (BoardInfo.FamilyCode != CAEN_DGTZ_XX742_FAMILY_CODE) {
-	  ret = CAEN_DGTZ_DecodeEvent(handle, v1742_eventPtr, (void**)&Event16);
-	}
-	else {
-	  ret = CAEN_DGTZ_DecodeEvent(handle, v1742_eventPtr, (void**)&Event742);
-	  if(WDcfg.useCorrections != -1) { // if manual corrections
-	    ApplyDataCorrection( 0, WDcfg.useCorrections, CAEN_DGTZ_DRS4_5GHz, &(Event742->DataGroup[0]), &Table_gr0);
-	    ApplyDataCorrection( 1, WDcfg.useCorrections, CAEN_DGTZ_DRS4_5GHz, &(Event742->DataGroup[1]), &Table_gr1);
+  
+  /* /\*   nCycles= 0; *\/ */
+  /* /\*   Nb = 0; *\/ */
+  /* /\*   Ne = 0; *\/ */
+  /* 	PrevRateTime = CurrentTime; */
+  /* } */
+  
+  /* Analyze data */
+  for(i = 0; i < (int)NumEvents; i++) {
+    /* Get one event from the readout buffer */
+    ret = CAEN_DGTZ_GetEventInfo(handle, v1742_buffer, BufferSize, i, &EventInfo, &v1742_eventPtr);
+    if (ret) {
+      ErrCode = ERR_EVENT_BUILD;
+      return ErrCode;
+    }
+    /* decode the event */
+    if (WDcfg.Nbit == 8) 
+      ret = CAEN_DGTZ_DecodeEvent(handle, v1742_eventPtr, (void**)&Event8);
+    else if (BoardInfo.FamilyCode != CAEN_DGTZ_XX742_FAMILY_CODE) {
+      ret = CAEN_DGTZ_DecodeEvent(handle, v1742_eventPtr, (void**)&Event16);
+    }
+    else {
+      ret = CAEN_DGTZ_DecodeEvent(handle, v1742_eventPtr, (void**)&Event742);
+      if(WDcfg.useCorrections != -1) { // if manual corrections
+	ApplyDataCorrection( 0, WDcfg.useCorrections, CAEN_DGTZ_DRS4_5GHz, &(Event742->DataGroup[0]), &Table_gr0);
+	ApplyDataCorrection( 1, WDcfg.useCorrections, CAEN_DGTZ_DRS4_5GHz, &(Event742->DataGroup[1]), &Table_gr1);
 	  }
-	  //      events.push_back(V1742_Event_t(EventInfo,*Event742));
-	}
-	
-	if (ret) {
-	  ErrCode = ERR_EVENT_BUILD;
-	  return ErrCode;
-	}    
-      }  
+      events.push_back(V1742_Event_t(EventInfo,*Event742));
+    }
+    
+    if (ret) {
+      ErrCode = ERR_EVENT_BUILD;
+      return ErrCode;
+    }    
+  }  
       //      printf("%d %d\n",Nb,Ne);
       //      sleep(1);
-    }
+  
   /* //Freeing V1742 memory  after read */
   // Test what happens when enable this. Do we need to malloc again? To be checked
   /* ret = CAEN_DGTZ_FreeReadoutBuffer(&v1742_buffer); */
@@ -1184,10 +1177,10 @@ int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& eve
   /*   ErrCode = ERR_FREE_BUFFER; */
   /*   return ErrCode; */
   /* } */
-   
+  
   ErrCode = ERR_NONE;
   return ErrCode;
-
+  
 }
 
 int stop_V1742(int handle)

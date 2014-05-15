@@ -116,14 +116,15 @@ int main(int argc, char** argv)
   int ret = 1-CAEN_DGTZ_OpenDigitizer((CAEN_DGTZ_ConnectionType) 0,1,0,0x500000,&handleV1742);
   //  ret = CAEN_DGTZ_OpenDigitizer((CAEN_DGTZ_ConnectionType) 0,1,0,0x500000,&handle);
 
-  //hack to get bhandle 
+  //hack to get VME Handle (normally this handle is 0, can be also hardcoded...)
+
   CAEN_DGTZ_BoardInfo_t myBoardInfo;
   ret *= 1-CAEN_DGTZ_GetInfo(handleV1742, &myBoardInfo);  
-  printf("%d %s\n",ret,&myBoardInfo.ModelName);
+  /* printf("%d %s\n",ret,&myBoardInfo.ModelName); */
   ret *= 1-CAENComm_Info(myBoardInfo.CommHandle, CAENComm_VMELIB_handle ,&BHandle);
-  printf("%d VME Handle %d\n",ret,BHandle);
+  /* printf("%d VME Handle %d\n",ret,BHandle); */
 
-  printf("Opened V1742 %d\n",ret);
+  printf("Opened V1742 and initialize crate: status %d\n",ret);
   init_V1742(handleV1742);
 
   /* Bridge VME initialization */
@@ -293,7 +294,7 @@ int main(int argc, char** argv)
   vector<int> my_adc792_2_OD, my_adc792_2_WD;
   vector<int> my_adc792_3_OD, my_adc792_3_WD;
   vector<uint32_t> my_scal_OD, my_scal_WD, tmpscaD;
-  /* vector<V1742_Event_t> my_dig1742_OD; */
+  vector<V1742_Event_t> my_dig1742_OD;
   vector<int> my_header_OD;
   vector<unsigned int> my_Dig_Event;
 
@@ -533,7 +534,7 @@ int main(int argc, char** argv)
 	if(DIG1742) {
 	  my_dig1742_OD.clear();
 	  printf("Hello\n");
-	  daq_status = 1 - read_V1742(handle,hm_evt_read,my_dig1742_OD);
+	  daq_status = 1 - read_V1742(handleV1742,hm_evt_read,my_dig1742_OD);
 	  if (daq_status != 1)
 	    {
 	      printf("\nError reading DIGI 1742... STOP!\n");
@@ -681,22 +682,22 @@ int main(int argc, char** argv)
 
 	  }
 
-	  /* int eventSize_dig1742=0; */
-	  /* if (DIG1742) */
-	  /*   { */
-	  /*     if (ie<(int)my_dig1742_OD.size()) */
-	  /* 	{ */
-	  /* 	  daq_status *= writeEventToOutputBuffer_V1742(&my_Dig_Event,&((my_dig1742_OD[ie]).eventInfo),&((my_dig1742_OD[ie]).event)); */
-	  /* 	  if (my_Dig_Event.size()>0) */
-	  /* 	    { */
-	  /* 	      eventSize_dig1742=my_Dig_Event.size(); */
-	  /* 	      cout<<"This V1742 event " << ie << " has "<<eventSize_dig1742<<" words"<<endl; */
-	  /* 	    } */
-	  /* 	} */
-	  /*     else */
-	  /* 	cout<<"V1742::ERROR::DATA ARE CORRUPTED" <<endl; */
-	  /*     myOE.push_back(eventSize_dig1742); */
-	  /*   } */
+	  int eventSize_dig1742=0;
+	  if (DIG1742)
+	    {
+	      if (ie<(int)my_dig1742_OD.size())
+	  	{
+	  	  daq_status *= writeEventToOutputBuffer_V1742(&my_Dig_Event,&((my_dig1742_OD[ie]).eventInfo),&((my_dig1742_OD[ie]).event));
+	  	  if (my_Dig_Event.size()>0)
+	  	    {
+	  	      eventSize_dig1742=my_Dig_Event.size();
+	  	      cout<<"This V1742 event " << ie << " has "<<eventSize_dig1742<<" words"<<endl;
+	  	    }
+	  	}
+	      else
+	  	cout<<"V1742::ERROR::DATA ARE CORRUPTED" <<endl;
+	      myOE.push_back(eventSize_dig1742);
+	    }
 
 	  
 	  if(TDC1190) {
@@ -777,9 +778,9 @@ int main(int argc, char** argv)
 	    start_adc792_3 = end_adc792_3; //Reset the start position to the end of previuos write
 	  }
 
-	  /* if(DIG1742) { */
-	  /*   myOE.insert(myOE.end(),my_Dig_Event.begin(),my_Dig_Event.end()); */
-	  /* } */
+	  if(DIG1742) {
+	    myOE.insert(myOE.end(),my_Dig_Event.begin(),my_Dig_Event.end());
+	  }
 
 
 	  if(TDC1190 && my_tdc_WD.size()) {
@@ -909,14 +910,14 @@ int main(int argc, char** argv)
     std::cout << "V560:: channel " << i << " has " << tmpscaD[i] << " counts" << std::endl;
   fflush(stdout);
 
-  /* if(DIG1742) { */
-  /*   daq_status = 1 - stop_V1742(handle); */
-  /*   if (daq_status != 1)  */
-  /*     { */
-  /* 	printf("\nError stopping DIGI 1742... STOP!\n"); */
-  /* 	return(1); */
-  /*     } */
-  /* } */
+  if(DIG1742) {
+    daq_status = 1 - stop_V1742(handleV1742);
+    if (daq_status != 1)
+      {
+  	printf("\nError stopping DIGI 1742... STOP!\n");
+  	return(1);
+      }
+  }
 
   /* Output File finalization */  
   printf("\n Closing output file!\n");
