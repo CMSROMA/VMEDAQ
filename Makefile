@@ -12,7 +12,7 @@ OBJS = adc265_lib.o adc792_lib.o tdc1190_lib.o tdcV488A_lib.o v1718_lib.o vme_br
 
 OBJS_CAENCOMM = V814_lib_CAENComm.o V513_lib_CAENComm.o V262_lib_CAENComm.o adc792_lib_CAENComm.o X742CorrectionRoutines.o V1742_lib.o 
 
-BINS = acquire count acquireDigitizer acquireDigitizer2
+BINS = acquire count acquire_CAENComm
 
 INCLUDE_DIR = .
 
@@ -23,20 +23,17 @@ all: $(BINS)
 acquire: $(OBJS) main_acquisition.o 
 	g++ -g -DLINUX -o acquire $(OBJS) -lncurses -lm -l CAENVME  -lCAENComm -lCAENDigitizer main_acquisition.o
 
-acquireDigitizer2: $(OBJS) main_acquisition_digitizer.o 
-	g++ -g -DLINUX -o acquireDigitizer2 $(OBJS) -lncurses -lm -l CAENVME -lCAENComm -lCAENDigitizer main_acquisition_digitizer.o
-
 count: $(OBJS) simple_count.o
 	g++ -g -DLINUX -o count $(OBJS) -lncurses -lm -l CAENVME -lCAENComm -lCAENDigitizer simple_count.o
 
-acquireDigitizer: $(OBJS_CAENCOMM) testDigitizer.o
-	g++ -g -DLINUX -o acquireDigitizer $(OBJS_CAENCOMM) -lncurses -lm -l CAENVME -lCAENComm -lCAENDigitizer testDigitizer.o
+acquire_CAENComm: $(OBJS_CAENCOMM) testDigitizer.o
+	g++ -g -DLINUX -o acquire_CAENComm $(OBJS_CAENCOMM) -lncurses -lm -l CAENVME -lCAENComm -lCAENDigitizer testDigitizer.o
 
 main_acquisition.o: main_acquisition.c main_acquisition.h
 	g++ $(COPTS) -c main_acquisition.c
 
-main_acquisition_digitizer.o: main_acquisition_digitizer.c main_acquisition.h
-	g++ $(COPTS) -c main_acquisition_digitizer.c
+# main_acquisition_digitizer.o: main_acquisition_digitizer.c main_acquisition.h
+# 	g++ $(COPTS) -c main_acquisition_digitizer.c
 
 testDigitizer.o: testDigitizer.c
 	g++ $(COPTS) -c testDigitizer.c

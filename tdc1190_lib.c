@@ -88,7 +88,7 @@ unsigned short init_tdc1190(int32_t BHandle)
     status *=opwriteTDC(BHandle, addrs.at(iBo), WindowOffset);
 
 
-    /* IV step: enable channel 0 & 1*/
+    /* IV step: enable channels*/
     data = 0x4300;
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
 
@@ -96,6 +96,19 @@ unsigned short init_tdc1190(int32_t BHandle)
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
     data = 0x4001;
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    data = 0x4002;
+    status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    data = 0x4003;
+    status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    data = 0x4004;
+    status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    data = 0x4005;
+    status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    data = 0x4006;
+    status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    data = 0x4007;
+    status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+
 
     //Max 128 hits per event
     /* data = 0x3300; */
@@ -390,15 +403,15 @@ vector<int> readNEventsTDC(int32_t BHandle, int idB, int status, int nevents, ve
       //status *= vme_read_dt(address,&data,AD32,D32);
       caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD32);
       status = 1-caenst;
-      std::cout << "GGG " << (data>>27) << std::endl;
+      /* std::cout << "GGG " << (data>>27) << std::endl; */
       /* glb_hea = 0; */
       /* if( (data>>27) & 0x8 ) { */
       glb_hea = 1;
       geo_add = data & 0x1F;
       evt_num = data>>5 & 0x3fffff;
-      outD.push_back((int) evt_num);
-      if(td1190_debug) printf("Read new event %d\n",evt_num);
+      outD.push_back( (0xA << 28) | ((int) evt_num & 0xFFFFFFF ));
       tmpW++;
+      if(td1190_debug) printf("Read new event %d\n",evt_num);
       /* } */
       
       //      cout<<"First read::  "<<glb_hea<<" "<<evt_num<<endl;
@@ -407,7 +420,8 @@ vector<int> readNEventsTDC(int32_t BHandle, int idB, int status, int nevents, ve
 	start over*/
       glb_tra = 0;
       if( (data>>27) & 0x10 ) glb_tra = 1;
-      
+
+
       while(status && !glb_tra) 
 	{
 	  //status *= vme_read_dt(address,&data,AD32,D32);
@@ -422,7 +436,7 @@ vector<int> readNEventsTDC(int32_t BHandle, int idB, int status, int nevents, ve
 	    /* Global Trailer!*/
 	    if(td1190_debug) printf("Global trailer:: %X\n",(unsigned int)data);
 	    tra_stat = data>>24 & 0x1;
-	    outD.push_back((int) tra_stat);
+	    outD.push_back(data);
 	    tmpW++;
 	  } else if(tdc_tra == 0x3) {
 	    /* TDC Trailer!*/
@@ -438,9 +452,11 @@ vector<int> readNEventsTDC(int32_t BHandle, int idB, int status, int nevents, ve
 	    tdc_time = (double)measurement/10;
 	    //	  if(td1190_debug)
 	    if(td1190_debug) printf("TDC measurement:: %d %d %d\n",(int)evt_num,(int)channel,(int)measurement);
-	    outD.push_back((int) evt_num); tmpW++;
-	    outD.push_back((int) channel); tmpW++;
-	    outD.push_back((int) measurement); tmpW++;
+	    /* outD.push_back((int) evt_num); tmpW++; */
+	    /* outD.push_back((int) channel); tmpW++; */
+	    /* outD.push_back((int) measurement); tmpW++; */
+	    outD.push_back(data);
+	    tmpW++;
 	  }
 	  
 	}
