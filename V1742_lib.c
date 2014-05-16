@@ -84,6 +84,7 @@ typedef struct WaveDumpConfig_t {
 static WaveDumpConfig_t  WDcfg;
 
 /* static int v1742_handle=0; */
+static char* v1742_eventPtr;
 static CAEN_DGTZ_BoardInfo_t       BoardInfo;
 
 static DataCorrection_t Table_gr0;
@@ -412,6 +413,7 @@ int writeEventToOutputBuffer_V1742(std::vector<unsigned int> *eventBuffer, CAEN_
   (*eventBuffer)[3]=EventInfo->EventCounter;
   (*eventBuffer)[4]=EventInfo->TriggerTimeTag;
 
+  printf("EVENT 1742 %d %d\n",EventInfo->EventCounter,EventInfo->TriggerTimeTag);
   for (gr=0;gr<(WDcfg.Nch/8);gr++) {
     if (Event->GrPresent[gr]) {
       for(ch=0; ch<9; ch++) {
@@ -813,6 +815,8 @@ int init_V1742(int handle)
   /* int isVMEDevice= 0; */
   int MajorNumber; 
 
+  v1742_eventPtr=NULL;
+
   /* int nCycles= 0; */
   FILE *f_ini;
 
@@ -1032,10 +1036,10 @@ int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& eve
   CAEN_DGTZ_EventInfo_t       EventInfo;
   
   char *v1742_buffer;
-  char *v1742_eventPtr;
+
   
   v1742_buffer=NULL;
-  v1742_eventPtr=NULL;
+
 
   uint32_t AllocatedSize;
 
@@ -1063,8 +1067,10 @@ int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& eve
     return ErrCode;
   }
 
-  ret = CAEN_DGTZ_MallocReadoutBuffer(handle, &v1742_buffer,&AllocatedSize); /* WARNING: This malloc must be done after the digitizer programming */
-  printf("malloc %d\n",ret);
+  printf("allocated event %d\n",ret);
+
+  ret = CAEN_DGTZ_MallocReadoutBuffer(handle, &v1742_buffer, &AllocatedSize); /* WARNING: This malloc must be done after the digitizer programming */
+  printf("malloc %d %d\n",AllocatedSize,ret);
   if (ret) {
     ErrCode = ERR_MALLOC;
     return ErrCode;
@@ -1096,29 +1102,33 @@ int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& eve
   
   BufferSize = 0;
   NumEvents = 0;
-  
-  ret = CAEN_DGTZ_ReadData(handle, CAEN_DGTZ_SLAVE_TERMINATED_READOUT_MBLT, v1742_buffer, &BufferSize);
-  if (ret) {
-    
-    ErrCode = ERR_READOUT;
-    return ErrCode;
-  }
-  
-  NumEvents = 0;
-  if (BufferSize != 0) {
-    ret = CAEN_DGTZ_GetNumEvents(handle, v1742_buffer, BufferSize, &NumEvents);
-    if (ret) {
-      ErrCode = ERR_READOUT;
-      return ErrCode;
-    }
-  }
-  
-      
-  if (nevents != NumEvents)
+
+  while (nevents != NumEvents)
     {
-      ErrCode = ERR_MISMATCH_EVENTS;
-      return ErrCode;
+      ret = CAEN_DGTZ_ReadData(handle, CAEN_DGTZ_SLAVE_TERMINATED_READOUT_MBLT, v1742_buffer, &BufferSize);
+      if (ret) {
+	
+	ErrCode = ERR_READOUT;
+	return ErrCode;
+      }
+      
+      NumEvents = 0;
+      if (BufferSize != 0) {
+	ret = CAEN_DGTZ_GetNumEvents(handle, v1742_buffer, BufferSize, &NumEvents);
+	if (ret) {
+	  ErrCode = ERR_READOUT;
+	  return ErrCode;
+	}
+      }
     }
+  
+
+      
+  /* if (nevents != NumEvents) */
+  /*   { */
+  /*     ErrCode = ERR_MISMATCH_EVENTS; */
+  /*     return ErrCode; */
+  /*   } */
   
   /* Nb += BufferSize;  */
   /* Ne += NumEvents; */
@@ -1167,10 +1177,16 @@ int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& eve
       return ErrCode;
     }    
   }  
+
+
       //      printf("%d %d\n",Nb,Ne);
       //      sleep(1);
   
   /* //Freeing V1742 memory  after read */
+  free(v1742_buffer);
+  //  free(v1742_eventPtr);
+  delete(Event742);
+
   // Test what happens when enable this. Do we need to malloc again? To be checked
   /* ret = CAEN_DGTZ_FreeReadoutBuffer(&v1742_buffer); */
   /* if (ret) { */
@@ -1178,8 +1194,7 @@ int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& eve
   /*   return ErrCode; */
   /* } */
   
-  ErrCode = ERR_NONE;
-  return ErrCode;
+  return 0;
   
 }
 
@@ -1188,7 +1203,7 @@ int stop_V1742(int handle)
   /* stop the acquisition */
   CAEN_DGTZ_SWStopAcquisition(handle);
   //  CAEN_DGTZ_FreeReadoutBuffer(&v1742_buffer);
-  CAEN_DGTZ_CloseDigitizer(handle);
+  //  CAEN_DGTZ_CloseDigitizer(handle);
   
   return 0;
 }

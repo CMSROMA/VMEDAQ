@@ -125,7 +125,7 @@ int main(int argc, char** argv)
   /* printf("%d VME Handle %d\n",ret,BHandle); */
 
   printf("Opened V1742 and initialize crate: status %d\n",ret);
-  init_V1742(handleV1742);
+
 
   /* Bridge VME initialization */
   /* status_init = bridge_init(BHandle);  */
@@ -242,16 +242,16 @@ int main(int argc, char** argv)
   }
 
 
-  /* if (DIG1742) */
-  /*   { */
-      /* printf("V1742 digitizer initialization\n"); */
-      /* status_init *= 1-init_V1742(); */
-      /* if (status_init != 1)  */
-      /* 	{ */
-      /* 	  printf("Error initializing V1742... STOP!\n"); */
-      /* 	  return(1); */
-      /* 	} */
-    /* } */
+  if (DIG1742)
+    {
+      printf("V1742 digitizer initialization\n");
+      status_init *= 1-init_V1742(handleV1742);
+      if (status_init != 1)
+      	{
+      	  printf("Error initializing V1742... STOP!\n");
+      	  return(1);
+      	}
+    }
 
   /* IO 262 initialization */
   if (IO262)
@@ -325,6 +325,7 @@ int main(int argc, char** argv)
   gettimeofday(&tv1, NULL);
   tv2=tv1;
 
+  sleep(2);
   /* Start of the event collection cycle */
   while(nevent<(int)max_evts)
     {
@@ -544,8 +545,6 @@ int main(int argc, char** argv)
 	  board_num += 128;
 	}
 	
-
-	/* Read the SCALER 560 EACH event*/
 	if(SCALER560 && update_scaler) {
 	  
 	  my_scal_OD.clear();
@@ -634,6 +633,7 @@ int main(int argc, char** argv)
 	/* } else { */
 
 	for(int ie=0; ie<hm_evt_read; ie++) {
+	  printf("DAQ_STATUS %d\n",daq_status);
 	  myOE.clear();
 	  
 	  //Write the event in unformatted style
@@ -687,7 +687,8 @@ int main(int argc, char** argv)
 	    {
 	      if (ie<(int)my_dig1742_OD.size())
 	  	{
-	  	  daq_status *= writeEventToOutputBuffer_V1742(&my_Dig_Event,&((my_dig1742_OD[ie]).eventInfo),&((my_dig1742_OD[ie]).event));
+		  std::cout << "Filling Buffer V1742 " << ie << std::endl;
+	  	  daq_status *= 1-writeEventToOutputBuffer_V1742(&my_Dig_Event,&((my_dig1742_OD[ie]).eventInfo),&((my_dig1742_OD[ie]).event));
 	  	  if (my_Dig_Event.size()>0)
 	  	    {
 	  	      eventSize_dig1742=my_Dig_Event.size();
@@ -847,10 +848,10 @@ int main(int argc, char** argv)
 	my_header_OD.clear();
       }
       
-      if(daq_status!=1){
-	printf("\nError writing the Event... STOP!\n");
-	return(1); 
-      }
+      /* if(daq_status!=1){ */
+      /* 	printf("\nError writing the Event... STOP!\n"); */
+      /* 	return(1);  */
+      /* } */
     
       //      if(IO513) daq_status = read_V513_old(BHandle, IO_value);
       

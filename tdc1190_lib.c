@@ -234,7 +234,7 @@ vector<int> readEventTDC(int32_t BHandle, int idB, int status) {
   unsigned long data,address,geo_add,measurement,channel,trailing;
   double tdc_time;
   int dataReady = 0; int TRG_matched = 0, evt_num = 0, tra_stat = 0;
-  int caenst; int TIMEOUT = 10000;
+  int caenst; int TIMEOUT = 50000;
   vector<int> outD;
   /* 
      Events Words
