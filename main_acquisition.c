@@ -34,9 +34,6 @@
 #define update_scaler 0
 using namespace std;
 
-
-
-
 int main(int argc, char** argv)
 {
 
@@ -57,6 +54,7 @@ int main(int argc, char** argv)
 
   float pedestal_freq=0;
   bool beam_trigger=0;
+  bool led_trigger=0;
 
   ref_date.tm_hour = 0;
   ref_date.tm_min = 0;
@@ -81,6 +79,8 @@ int main(int argc, char** argv)
 	break;
       case 'b': beam_trigger = true;
 	break;
+      case 'l': led_trigger = true;
+	break;
       case 'r': pedestal_freq = atof(argv[++i]);
 	break;
       }
@@ -88,9 +88,15 @@ int main(int argc, char** argv)
   }
 
   //Check options
-  if (beam_trigger && pedestal_freq>0)
+  if ( (beam_trigger && pedestal_freq>0) || (beam_trigger && led_trigger) || (pedestal_freq>0 && led_trigger) )
     {
       printf("Cannot have beam and pedestals at the same time:: EXIT!\n");
+      return(1); 
+    }
+
+  if ( (pedestal_freq==0) && !beam_trigger && !led_trigger)
+    {
+      printf("You have selected to start a run without any kind of trigger... Giving up\n");
       return(1); 
     }
 
@@ -257,8 +263,8 @@ int main(int argc, char** argv)
   if (IO262)
     {
       printf("V262 IO register initialization\n");
-      status_init *=OutCh_V262(BHandle,0,!beam_trigger); 
-      printf("V262: trigger beam is %d\n",beam_trigger);
+      status_init *=OutCh_V262(BHandle,0, (!beam_trigger) | (!led_trigger << 1)); 
+      printf("V262: trigger mask is %X\n", ((!beam_trigger) | (!led_trigger << 1)) );
       if (status_init != 1) 
 	{
 	  printf("Error setting the beam trigger veto... STOP!\n");
@@ -423,7 +429,7 @@ int main(int argc, char** argv)
 	  my_tdc_WD.clear();
 	  my_tdc_OD = readNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD);
 	  //my_tdc_OD = readFastNEventsTDC(BHandle,0,daq_status,hm_evt_read,my_tdc_WD,true);
-	  cout<<"Filled TDC Word Vector:: "<< my_tdc_WD.size()<<" "<<my_tdc_OD.size()<<endl;
+	  //	  cout<<"Filled TDC Word Vector:: "<< my_tdc_WD.size()<<" "<<my_tdc_OD.size()<<endl;
 	  if(daq_status!=1){
 	    printf("\nError reading the TDC 1190... STOP!\n");
 	    return(1); 
@@ -441,7 +447,7 @@ int main(int argc, char** argv)
 	    printf("\nError reading the TDC 1290... STOP!\n");
 	    return(1); 
 	  }
-	    cout<<"Filled Word Vector:: "<<my_tdc2_WD.size()<<" "<<my_tdc2_OD.size()<<endl;
+	  //	    cout<<"Filled Word Vector:: "<<my_tdc2_WD.size()<<" "<<my_tdc2_OD.size()<<endl;
 	  board_num += 2;
 	  tdc2Words = my_tdc2_OD.size();
 	}
@@ -533,7 +539,6 @@ int main(int argc, char** argv)
 	//read the Digitizer 1742
 	if(DIG1742) {
 	  my_dig1742_OD.clear();
-	  printf("Hello\n");
 	  daq_status = 1 - read_V1742(handleV1742,hm_evt_read,my_dig1742_OD);
 	  if (daq_status != 1)
 	    {
@@ -632,7 +637,6 @@ int main(int argc, char** argv)
 	/* } else { */
 
 	for(int ie=0; ie<hm_evt_read; ie++) {
-	  printf("DAQ_STATUS %d\n",daq_status);
 	  myOE.clear();
 	  
 	  //Write the event in unformatted style
@@ -686,12 +690,10 @@ int main(int argc, char** argv)
 	    {
 	      if (ie<(int)my_dig1742_OD.size())
 	  	{
-		  std::cout << "Filling Buffer V1742 " << ie << std::endl;
 	  	  daq_status *= 1-writeEventToOutputBuffer_V1742(&my_Dig_Event,&((my_dig1742_OD[ie]).eventInfo),&((my_dig1742_OD[ie]).event));
 	  	  if (my_Dig_Event.size()>0)
 	  	    {
 	  	      eventSize_dig1742=my_Dig_Event.size();
-	  	      cout<<"This V1742 event " << ie << " has "<<eventSize_dig1742<<" words"<<endl;
 	  	    }
 	  	}
 	      else
@@ -702,7 +704,6 @@ int main(int argc, char** argv)
 	  
 	  if(TDC1190) {
 	    if(ie<(int)my_tdc_WD.size()) {
-	      std::cout << "TDC 1190 HAS " << my_tdc_WD.at(ie) << " WORDS IN THIS EVENT" << std::endl; 
 	      myOE.push_back(my_tdc_WD.at(ie));	    
 	    }
 	  }
@@ -787,7 +788,7 @@ int main(int argc, char** argv)
 	  if(TDC1190 && my_tdc_WD.size()) {
 	    end = start + my_tdc_WD.at(ie); 
 	    for(int idum = start; idum<end; idum++) {
-	      cout<<" TDC data:: "<<ie<<" "<<idum<<" "<<my_tdc_OD.at(idum)<<endl;
+	      /* cout<<" TDC data:: "<<ie<<" "<<idum<<" "<<my_tdc_OD.at(idum)<<endl; */
 	      myOE.push_back(my_tdc_OD.at(idum));
 	    }
 	    start = end; //Reset the start position to the end of previuos write
@@ -853,21 +854,44 @@ int main(int argc, char** argv)
       /* } */
     
       //      if(IO513) daq_status = read_V513_old(BHandle, IO_value);
-      
+
+      int pause_counter=0;
       if((nevent-(p_value*((int)(nevent/p_value))))==0) 
 	{
 	  delta_micro_seconds = timevaldiff(&tv2,&tv);
 
+	  //Printing run statistics
 	  if(delta_micro_seconds) rate = ((double)p_value)/(double)delta_micro_seconds;
 	  printf("_____ Event number: %d El time (s): %f Freq (Hz): %lf ______\n",
 		 nevent,(float)delta_micro_seconds/1000000.,rate*1000000.);
-          fflush(stdout);
 
+	  //Stop run
 	  if(!access("/home/cmsdaq/DAQ/VMEDAQ/acq.stop",F_OK)) {
 	    cout<<"Stopped run from acq.stop : deleting acq.stop file"<<endl;
 	    nevent = max_evts;
 	    remove("/home/cmsdaq/DAQ/VMEDAQ/acq.stop");
 	  }
+	
+	  //Pause run
+	  while (!access("/home/cmsdaq/DAQ/VMEDAQ/acq.pause",F_OK))
+	    {
+	      if (pause_counter==0)
+		cout<<"Run has been paused"<<endl;
+	      else if (pause_counter%10==0)
+		cout<<"Run has been paused since " << pause_counter << " seconds" << endl;
+	      if(!access("/home/cmsdaq/DAQ/VMEDAQ/acq.stop",F_OK)) {
+		cout<<"Stopped run from acq.stop while on pause: deleting acq.stop and acq.pause files"<<endl;
+		nevent = max_evts;
+		remove("/home/cmsdaq/DAQ/VMEDAQ/acq.stop");
+		remove("/home/cmsdaq/DAQ/VMEDAQ/acq.pause");
+	      }
+	      sleep(1);
+	      ++pause_counter;
+	    }
+
+	  //Flushing output
+          fflush(stdout);
+
 	  tv2=tv;
 	}     
       

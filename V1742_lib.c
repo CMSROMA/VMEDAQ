@@ -413,7 +413,7 @@ int writeEventToOutputBuffer_V1742(std::vector<unsigned int> *eventBuffer, CAEN_
   (*eventBuffer)[3]=EventInfo->EventCounter;
   (*eventBuffer)[4]=EventInfo->TriggerTimeTag;
 
-  printf("EVENT 1742 %d %d\n",EventInfo->EventCounter,EventInfo->TriggerTimeTag);
+  //  printf("EVENT 1742 %d %d\n",EventInfo->EventCounter,EventInfo->TriggerTimeTag);
   for (gr=0;gr<(WDcfg.Nch/8);gr++) {
     if (Event->GrPresent[gr]) {
       for(ch=0; ch<9; ch++) {
@@ -947,7 +947,7 @@ int init_V1742(int handle)
     ErrCode = ERR_DGZ_PROGRAM;
     return ErrCode;
   }
-  printf("%d\n",ret);
+  /* printf("%d\n",ret); */
 
   /* // Select the next enabled group for plotting */
   /* if ((WDcfg.EnableMask) && (WDcfg.Nch>8)) */
@@ -1024,7 +1024,7 @@ int init_V1742(int handle)
 int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& events)
 //int read_V1742(int handle)
 {
-  printf("Start read\n");
+  /* printf("Start read\n"); */
   CAEN_DGTZ_ErrorCode ret=CAEN_DGTZ_Success;
   ERROR_CODES ErrCode= ERR_NONE;
 
@@ -1067,10 +1067,10 @@ int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& eve
     return ErrCode;
   }
 
-  printf("allocated event %d\n",ret);
+  /* printf("allocated event %d\n",ret); */
 
   ret = CAEN_DGTZ_MallocReadoutBuffer(handle, &v1742_buffer, &AllocatedSize); /* WARNING: This malloc must be done after the digitizer programming */
-  printf("malloc %d %d\n",AllocatedSize,ret);
+  /* printf("malloc %d %d\n",AllocatedSize,ret); */
   if (ret) {
     ErrCode = ERR_MALLOC;
     return ErrCode;
