@@ -130,6 +130,9 @@ CHANNEL_TRIGGER       DISABLED
 # the OR of the self trigger of the channels in the group that are enabled by this mask.
 # options: 0 to FF
 
+
+#PM 2014.05.17 Channel #2 and Channel #7 seems to have problem with the preloaded correction table. To be avoided for IMCP BTF run
+
 [0]
 ENABLE_INPUT           YES
 DC_OFFSET             -10
@@ -138,6 +141,7 @@ GRP_CH_DC_OFFSET       -10,-10,-10,-10,-10,-10,-10,-10
 TRIGGER_THRESHOLD     100
 CHANNEL_TRIGGER        DISABLED
 GROUP_TRG_ENABLE_MASK  FF
+
 
 [1]
 ENABLE_INPUT           NO
