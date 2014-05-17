@@ -35,7 +35,7 @@
 #define V792N_R_TEST_ADDRESS        0x1064
 #define V792N_SS_RESET_REG          0x1016
 
-#define adc792_debug    1
+#define adc792_debug    0
 
 void print_adc792_debug_word(uint32_t word);
 void check_adc792_status_afterRead(int32_t BHandle,int idB);

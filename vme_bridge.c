@@ -14,8 +14,8 @@ int bridge_init(int32_t &BHandle) {
   unsigned int DataShort=0;
   VMEBoard = cvV1718;
   // VMEBoard = cvV2718;
-  Device = 1;
-  Link = 0;
+  Device = VME_DEVICE_ID; //Beware this number can flip from 0 to 1 after reboot...
+  Link = VME_LINK_ID;
   bool debug = false;
   
   if( CAENVME_Init(VMEBoard, Link, Device, &BHandle) != cvSuccess ) 
@@ -27,8 +27,8 @@ int bridge_init(int32_t &BHandle) {
     printf("VME initialized \n");
   }
 
-  CAENVME_SystemReset(BHandle);
-  usleep(10000);
+  /* CAENVME_SystemReset(BHandle); */
+  /* usleep(10000); */
 
   status = 1;
   caenst = CAENVME_ReadRegister(BHandle, cvStatusReg, &DataShort);

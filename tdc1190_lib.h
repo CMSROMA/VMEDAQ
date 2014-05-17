@@ -19,4 +19,4 @@ std::vector<int> readFastNEventsTDC(int32_t BHandle, int idB, int status, int ne
 #define STATUSREGADD            0x1002
 #define CONREGADD               0x1000
 
-#define td1190_debug              1
+#define td1190_debug              0
