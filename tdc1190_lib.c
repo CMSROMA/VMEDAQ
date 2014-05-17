@@ -61,7 +61,7 @@ unsigned short init_tdc1190(int32_t BHandle)
     /* I step: set TRIGGER Matching mode via OPCODE 00xx */
     if(td1190_debug) printf("Going to set Tr mode :%d\n",(int)trMode);
     status *=opwriteTDC(BHandle, addrs.at(iBo), trMode);
-    if(td1190_debug) printf("Setting trigger matching. Status:%d\n",status);
+    printf("TDC1290::Setting trigger matching. Status:%d\n",status);
     
     /* I step: set Edge detection via OPCODE 22xx */
     data = 0x2200;
@@ -75,7 +75,7 @@ unsigned short init_tdc1190(int32_t BHandle)
     data = 0x3; //25 ps resolution
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
 
-    if(td1190_debug) printf("Setting Time Reso 25ps. Status:%d\n",status);
+    printf("TDC1290::Setting Time Reso 25ps. Status:%d\n",status);
     
     /* II step: set TRIGGER Window Width to value n */
     data = 0x1000;
@@ -87,28 +87,39 @@ unsigned short init_tdc1190(int32_t BHandle)
     status *=opwriteTDC(BHandle, addrs.at(iBo), data); 
     status *=opwriteTDC(BHandle, addrs.at(iBo), WindowOffset);
 
+    printf("TDC1290::Setting Time Window Width %d and Offset %d (values in 25ns bins). Status:%d\n",WindowWidth, WindowOffset,status);
 
     /* IV step: enable channels*/
     data = 0x4300;
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
 
+    unsigned int enabledChannels=0;
     data = 0x4000;
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    enabledChannels |= ( 1 << (data & 0xFF) );
     data = 0x4001;
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    enabledChannels |= ( 1 << (data & 0xFF) );
     data = 0x4002;
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    enabledChannels |= ( 1 << (data & 0xFF) );
     data = 0x4003;
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    enabledChannels |= ( 1 << (data & 0xFF) );
     data = 0x4004;
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    enabledChannels |= ( 1 << (data & 0xFF) );
     data = 0x4005;
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    enabledChannels |= ( 1 << (data & 0xFF) );
     data = 0x4006;
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    enabledChannels |= ( 1 << (data & 0xFF) );
     data = 0x4007;
     status *=opwriteTDC(BHandle, addrs.at(iBo), data);
+    enabledChannels |= ( 1 << (data & 0xFF) );
 
+    printf("TDC1290::Channels %X are enabled. Status:%d\n", enabledChannels, status);
 
     //Max 128 hits per event
     /* data = 0x3300; */
@@ -158,7 +169,7 @@ unsigned short init_tdc1190(int32_t BHandle)
 
     caenst = CAENVME_ReadCycle(BHandle,address,&data,cvA24_U_DATA,cvD16);
     status *= 1-caenst;
-    printf("Reading status register. Status:%u\t%X\n",status,(unsigned int)data);
+    printf("TDC1290:: Reading status register. Status:%u\t%X\n",status,(unsigned int)data);
     
 
     /* /\* TDC Event Reset *\/ */
