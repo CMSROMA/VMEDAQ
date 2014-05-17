@@ -117,34 +117,44 @@ int main(int argc, char** argv)
 
 
   int handleV1742;
-  /* int ret = CAENComm_OpenDevice((CAENComm_ConnectionType) 0,1,0,0x500000,&handle); */
-  /* ret = CAENComm_CloseDevice(handle); */
-  int ret = 1-CAEN_DGTZ_OpenDigitizer((CAEN_DGTZ_ConnectionType) 0,1,0,0x500000,&handleV1742);
-  //  ret = CAEN_DGTZ_OpenDigitizer((CAEN_DGTZ_ConnectionType) 0,1,0,0x500000,&handle);
-
-  //hack to get VME Handle (normally this handle is 0, can be also hardcoded...)
-
-  CAEN_DGTZ_BoardInfo_t myBoardInfo;
-  ret *= 1-CAEN_DGTZ_GetInfo(handleV1742, &myBoardInfo);  
-  /* printf("%d %s\n",ret,&myBoardInfo.ModelName); */
-  ret *= 1-CAENComm_Info(myBoardInfo.CommHandle, CAENComm_VMELIB_handle ,&BHandle);
-  /* printf("%d VME Handle %d\n",ret,BHandle); */
-
-  printf("Opened V1742 and initialize crate: status %d\n",ret);
-
 
   /* Bridge VME initialization */
-  /* status_init = bridge_init(BHandle);  */
-  /* bridge_deinit(BHandle);  */
-  /* status_init = bridge_init(BHandle); */
+  if (V1718 && DIG1742)
+    {
 
-  /* /\* VME deinitialization *\/ */
-  /* printf("VME initialization\n"); */
-  /* if (status_init != 1)  */
-  /*   { */
-  /*     printf("VME Initialization error ... STOP!\n"); */
-  /*     return(1); */
-  /*  } */
+      int ret = 1-CAEN_DGTZ_OpenDigitizer((CAEN_DGTZ_ConnectionType) 0, VME_DEVICE_ID, 0, V1742_0_BA, &handleV1742);
+      //  ret = CAEN_DGTZ_OpenDigitizer((CAEN_DGTZ_ConnectionType) 0,1,0,0x500000,&handle);
+      /* int ret = CAENComm_OpenDevice((CAENComm_ConnectionType) 0,1,0,0x500000,&handle); */
+      /* ret = CAENComm_CloseDevice(handle); */
+      
+      //hack to get VME Handle (normally this handle is 0, can be also hardcoded...)
+      CAEN_DGTZ_BoardInfo_t myBoardInfo;
+      ret *= 1-CAEN_DGTZ_GetInfo(handleV1742, &myBoardInfo);  
+      /* printf("%d %s\n",ret,&myBoardInfo.ModelName); */
+      ret *= 1-CAENComm_Info(myBoardInfo.CommHandle, CAENComm_VMELIB_handle ,&BHandle);
+      /* printf("%d VME Handle %d\n",ret,BHandle); */
+      if (ret != 1)
+	{
+	  printf("VME Initialization error ... STOP!\n");
+	  return(1);
+	}
+      printf("Opened V1742 and initialized VME crate\n",ret);
+    }
+  else 
+    {
+
+      status_init = bridge_init(BHandle);
+      /* VME deinitialization */
+      bridge_deinit(BHandle);
+      status_init = bridge_init(BHandle);
+      
+      printf("VME initialization\n");
+      if (status_init != 1)
+	{
+	  printf("VME Initialization error ... STOP!\n");
+	  return(1);
+	}
+    }
 
   /* Modules initialization */
   status_init=1;
