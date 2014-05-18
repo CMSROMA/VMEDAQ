@@ -24,8 +24,8 @@ unsigned short init_tdc1190(int32_t BHandle)
   unsigned long address;
   unsigned short data;
   short  status; int caenst;
-  int WindowWidth =  0x18;    /* Value * 25ns : 0x18 --> 600ns*/
-  int WindowOffset = -0x18;    /* Time Window Offset */
+  int WindowWidth =  0x8;    /* Value * 25ns : 0x8 --> 200ns*/
+  int WindowOffset = -0x4;    /* Time Window Offset 100ns, Gate is [-100,100] ns*/
   unsigned long trMode = 0x0000;
 
 
