@@ -65,7 +65,7 @@ MAX_NUM_EVENTS_BLT   10
 # POST_TRIGGER: post trigger size in percent of the whole acquisition window
 # options: 0 to 100
 # On models 742 there is a delay of about 35nsec on signal Fast Trigger TR; the post trigger is added to this delay  
-POST_TRIGGER  50
+POST_TRIGGER  60
 
 # TRIGGER_EDGE: decides whether the trigger occurs on the rising or falling edge of the signal
 # options: RISING, FALLING
@@ -137,7 +137,7 @@ CHANNEL_TRIGGER       DISABLED
 ENABLE_INPUT           YES
 DC_OFFSET             -10
 #GRP_CH_DC_OFFSET       0,0,0,0,0,0,0,0
-GRP_CH_DC_OFFSET       -10,-10,-10,-10,-10,-10,-10,-10
+GRP_CH_DC_OFFSET       -10,-10,-10,10,-10,-10,-10,-10
 TRIGGER_THRESHOLD     100
 CHANNEL_TRIGGER        DISABLED
 GROUP_TRG_ENABLE_MASK  FF

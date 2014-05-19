@@ -7,6 +7,6 @@
 #define V1742_0_BA 0x00500000
 #define V814_0_BA 0x00680000 
 
-#define VME_DEVICE_ID 1 //Beware this number can flip from 0 to 1 after reboot. Change it in case of problems connecting
+#define VME_DEVICE_ID 0 //Beware this number can flip from 0 to 1 after reboot. Change it in case of problems connecting
 #define VME_LINK_ID 0
 
