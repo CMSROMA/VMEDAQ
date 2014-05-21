@@ -122,7 +122,7 @@ int main(int argc, char** argv)
   if (V1718 && DIG1742)
     {
 
-      int ret = 1-CAEN_DGTZ_OpenDigitizer((CAEN_DGTZ_ConnectionType) 0, VME_DEVICE_ID, 0, V1742_0_BA, &handleV1742);
+      int ret = 1-CAEN_DGTZ_OpenDigitizer((CAEN_DGTZ_ConnectionType) 0, 0, 0, V1742_0_BA, &handleV1742);
       //  ret = CAEN_DGTZ_OpenDigitizer((CAEN_DGTZ_ConnectionType) 0,1,0,0x500000,&handle);
       /* int ret = CAENComm_OpenDevice((CAENComm_ConnectionType) 0,1,0,0x500000,&handle); */
       /* ret = CAENComm_CloseDevice(handle); */
@@ -138,6 +138,7 @@ int main(int argc, char** argv)
 	  printf("VME Initialization error ... STOP!\n");
 	  return(1);
 	}
+      CAENVME_SystemReset(BHandle);
       printf("Opened V1742 and initialized VME crate\n",ret);
     }
   else 
@@ -317,7 +318,7 @@ int main(int argc, char** argv)
   myOut.open(f_value,ios::out);
 
   
-  int in_evt_read = 10; 
+  int in_evt_read = 1; 
   int hm_evt_read; 
 
   bool read_boards,read_scaler;
