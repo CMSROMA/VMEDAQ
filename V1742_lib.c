@@ -84,7 +84,7 @@ typedef struct WaveDumpConfig_t {
 static WaveDumpConfig_t  WDcfg;
 
 /* static int v1742_handle=0; */
-static char* v1742_eventPtr;
+
 static CAEN_DGTZ_BoardInfo_t       BoardInfo;
 
 static DataCorrection_t Table_gr0;
@@ -815,7 +815,7 @@ int init_V1742(int handle)
   /* int isVMEDevice= 0; */
   int MajorNumber; 
 
-  v1742_eventPtr=NULL;
+  /* v1742_eventPtr=NULL; */
 
   /* int nCycles= 0; */
   FILE *f_ini;
@@ -1036,7 +1036,7 @@ int read_V1742(int handle, unsigned int nevents, std::vector<V1742_Event_t>& eve
   CAEN_DGTZ_EventInfo_t       EventInfo;
   
   char *v1742_buffer;
-
+  char *v1742_eventPtr;
   
   v1742_buffer=NULL;
 
